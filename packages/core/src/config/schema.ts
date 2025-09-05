@@ -7,7 +7,9 @@ const identifier = z
   .max(64)
   .regex(/^[a-zA-Z0-9][a-zA-Z0-9_.:-]*$/, 'must start with a letter or digit');
 
-const duration = z.string().regex(/^\s*(\d+\s*(ms|s|m|h|d)\s*)+$/i, 'must be a duration like "10m"');
+const duration = z
+  .string()
+  .regex(/^\s*(\d+\s*(ms|s|m|h|d)\s*)+$/i, 'must be a duration like "10m"');
 
 const scriptSchema = z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]);
 

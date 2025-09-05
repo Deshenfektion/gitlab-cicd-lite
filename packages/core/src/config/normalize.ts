@@ -44,7 +44,8 @@ function normalizeArtifacts(
   return {
     name: raw.name ?? jobName,
     paths: [...raw.paths],
-    expireInMs: raw.expire_in === undefined ? DEFAULT_ARTIFACT_TTL_MS : parseDuration(raw.expire_in),
+    expireInMs:
+      raw.expire_in === undefined ? DEFAULT_ARTIFACT_TTL_MS : parseDuration(raw.expire_in),
   };
 }
 
