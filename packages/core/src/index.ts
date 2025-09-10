@@ -6,3 +6,4 @@ export * from './config/parse.js';
 export * from './config/normalize.js';
 export * from './graph/dag.js';
 export * from './graph/cycles.js';
+export * from './graph/stages.js';

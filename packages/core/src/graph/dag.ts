@@ -1,5 +1,6 @@
 import { ConfigError } from '../config/errors.js';
 import type { JobDefinition, PipelineDefinition } from '../config/types.js';
+import { resolveDependencies } from './stages.js';
 
 export interface GraphNode {
   readonly name: string;
@@ -14,14 +15,21 @@ export interface PipelineGraph {
 
 export function buildGraph(definition: PipelineDefinition): PipelineGraph {
   const jobs = new Map(definition.jobs.map((job) => [job.name, job]));
-  const dependents = new Map<string, string[]>(definition.jobs.map((job) => [job.name, []]));
 
   for (const job of definition.jobs) {
     for (const need of job.needs) {
       if (!jobs.has(need)) {
         throw ConfigError.of(`jobs.${job.name}.needs`, `unknown job "${need}"`);
       }
-      (dependents.get(need) as string[]).push(job.name);
+    }
+  }
+
+  const dependencies = resolveDependencies(definition);
+  const dependents = new Map<string, string[]>(definition.jobs.map((job) => [job.name, []]));
+
+  for (const job of definition.jobs) {
+    for (const upstream of dependencies.get(job.name) as string[]) {
+      (dependents.get(upstream) as string[]).push(job.name);
     }
   }
 
@@ -30,7 +38,7 @@ export function buildGraph(definition: PipelineDefinition): PipelineGraph {
     nodes.set(job.name, {
       name: job.name,
       job,
-      dependencies: [...job.needs],
+      dependencies: dependencies.get(job.name) as string[],
       dependents: dependents.get(job.name) as string[],
     });
   }
