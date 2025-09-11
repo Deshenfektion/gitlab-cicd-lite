@@ -7,3 +7,4 @@ export * from './config/normalize.js';
 export * from './graph/dag.js';
 export * from './graph/cycles.js';
 export * from './graph/stages.js';
+export * from './graph/topology.js';
