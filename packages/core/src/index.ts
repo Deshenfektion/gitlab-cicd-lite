@@ -12,3 +12,4 @@ export * from './graph/topology.js';
 export * from './graph/validate.js';
 export * from './graph/traverse.js';
 export * from './state/transitions.js';
+export * from './state/pipeline-status.js';
