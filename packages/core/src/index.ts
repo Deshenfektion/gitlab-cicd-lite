@@ -13,3 +13,5 @@ export * from './graph/validate.js';
 export * from './graph/traverse.js';
 export * from './state/transitions.js';
 export * from './state/pipeline-status.js';
+export * from './engine/outcome.js';
+export * from './engine/scheduler.js';
