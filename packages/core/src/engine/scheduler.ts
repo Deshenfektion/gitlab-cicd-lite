@@ -4,11 +4,18 @@ import { topologicalOrder } from '../graph/topology.js';
 import { derivePipelineStatus } from '../state/pipeline-status.js';
 import { assertTransition, isTerminal } from '../state/transitions.js';
 import type { JobOutcome } from './outcome.js';
+import { backoffMs, shouldRetry } from './retry.js';
 
 export interface JobSnapshot {
   readonly name: string;
   readonly status: JobStatus;
   readonly attempt: number;
+}
+
+export interface CompletionResult {
+  readonly accepted: boolean;
+  readonly retryScheduled: boolean;
+  readonly retryDelayMs?: number;
 }
 
 interface JobState {
@@ -70,20 +77,27 @@ export class PipelineScheduler {
     return state.attempt;
   }
 
-  complete(name: string, outcome: JobOutcome): boolean {
+  complete(name: string, outcome: JobOutcome): CompletionResult {
     const state = this.stateOf(name);
     if (state.status !== 'running') {
-      return false;
+      return { accepted: false, retryScheduled: false };
     }
 
     if (outcome.kind === 'success') {
       this.transition(name, 'success');
-      return true;
+      return { accepted: true, retryScheduled: false };
     }
 
     this.transition(name, 'failed');
+
+    const decision = shouldRetry(this.definitionOf(name).retry, outcome.reason, state.attempt);
+    if (decision.retry) {
+      this.transition(name, 'pending');
+      return { accepted: true, retryScheduled: true, retryDelayMs: backoffMs(state.attempt) };
+    }
+
     this.skipDependentsOf(name);
-    return true;
+    return { accepted: true, retryScheduled: false };
   }
 
   cancel(): readonly string[] {

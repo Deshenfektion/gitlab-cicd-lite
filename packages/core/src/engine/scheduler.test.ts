@@ -82,7 +82,7 @@ describe('PipelineScheduler', () => {
 
   it('ignores an outcome for a job that is not running', () => {
     const scheduler = schedulerFor(diamond);
-    expect(scheduler.complete('build', success())).toBe(false);
+    expect(scheduler.complete('build', success()).accepted).toBe(false);
     expect(scheduler.statusOf('build')).toBe('pending');
   });
 
