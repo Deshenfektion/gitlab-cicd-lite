@@ -146,3 +146,81 @@ describe('PipelineScheduler', () => {
     ]);
   });
 });
+
+describe('PipelineScheduler retries', () => {
+  const retrying = (max: number, when = '[always]') => `
+jobs:
+  flaky:
+    script: echo
+    retry:
+      max: ${max}
+      when: ${when}
+  after:
+    script: echo
+    needs: [flaky]
+`;
+
+  it('puts a retryable job back into the ready set', () => {
+    const scheduler = schedulerFor(retrying(1));
+    scheduler.start('flaky');
+    const result = scheduler.complete('flaky', failure('script_failure', 1));
+
+    expect(result.retryScheduled).toBe(true);
+    expect(result.retryDelayMs).toBe(1_000);
+    expect(scheduler.statusOf('flaky')).toBe('pending');
+    expect(scheduler.statusOf('after')).toBe('pending');
+    expect(scheduler.ready()).toEqual(['flaky']);
+  });
+
+  it('increments the attempt counter on every retry', () => {
+    const scheduler = schedulerFor(retrying(2));
+    expect(scheduler.start('flaky')).toBe(1);
+    scheduler.complete('flaky', failure('script_failure', 1));
+    expect(scheduler.start('flaky')).toBe(2);
+    scheduler.complete('flaky', failure('script_failure', 1));
+    expect(scheduler.start('flaky')).toBe(3);
+  });
+
+  it('gives up once the retry budget is exhausted', () => {
+    const scheduler = schedulerFor(retrying(1));
+    scheduler.start('flaky');
+    scheduler.complete('flaky', failure('script_failure', 1));
+    scheduler.start('flaky');
+    const result = scheduler.complete('flaky', failure('script_failure', 1));
+
+    expect(result.retryScheduled).toBe(false);
+    expect(scheduler.statusOf('flaky')).toBe('failed');
+    expect(scheduler.statusOf('after')).toBe('skipped');
+    expect(scheduler.status).toBe('failed');
+  });
+
+  it('lets a retried job succeed and unblock the pipeline', () => {
+    const scheduler = schedulerFor(retrying(1));
+    scheduler.start('flaky');
+    scheduler.complete('flaky', failure('runner_failure'));
+    scheduler.start('flaky');
+    scheduler.complete('flaky', success());
+
+    expect(scheduler.statusOf('flaky')).toBe('success');
+    expect(scheduler.ready()).toEqual(['after']);
+  });
+
+  it('does not retry a failure kind outside the policy', () => {
+    const scheduler = schedulerFor(retrying(3, '[timeout]'));
+    scheduler.start('flaky');
+    const result = scheduler.complete('flaky', failure('script_failure', 7));
+
+    expect(result.retryScheduled).toBe(false);
+    expect(scheduler.statusOf('flaky')).toBe('failed');
+  });
+
+  it('backs off exponentially between attempts', () => {
+    const scheduler = schedulerFor(retrying(3));
+    scheduler.start('flaky');
+    expect(scheduler.complete('flaky', failure('timeout')).retryDelayMs).toBe(1_000);
+    scheduler.start('flaky');
+    expect(scheduler.complete('flaky', failure('timeout')).retryDelayMs).toBe(2_000);
+    scheduler.start('flaky');
+    expect(scheduler.complete('flaky', failure('timeout')).retryDelayMs).toBe(4_000);
+  });
+});
