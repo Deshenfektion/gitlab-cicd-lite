@@ -72,6 +72,7 @@ function normalizeJob(
     artifacts: normalizeArtifacts(name, raw.artifacts),
     retry: normalizeRetry(raw.retry ?? defaults?.retry),
     timeoutMs: timeout === undefined ? DEFAULT_TIMEOUT_MS : parseDuration(timeout),
+    allowFailure: raw.allow_failure ?? defaults?.allow_failure ?? false,
   };
 }
 

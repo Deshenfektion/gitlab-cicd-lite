@@ -37,6 +37,7 @@ export interface JobDefinition {
   readonly artifacts: ArtifactDefinition | null;
   readonly retry: RetryPolicy;
   readonly timeoutMs: number;
+  readonly allowFailure: boolean;
 }
 
 export interface PipelineDefinition {

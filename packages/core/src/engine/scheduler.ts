@@ -35,7 +35,7 @@ export class PipelineScheduler {
   }
 
   get status(): PipelineStatus {
-    return derivePipelineStatus(this.order.map((name) => this.stateOf(name).status));
+    return derivePipelineStatus(this.order.map((name) => this.effectiveStatusOf(name)));
   }
 
   get finished(): boolean {
@@ -64,7 +64,7 @@ export class PipelineScheduler {
         return false;
       }
       return requireNode(this.graph, name).dependencies.every(
-        (dependency) => this.stateOf(dependency).status === 'success',
+        (dependency) => this.effectiveStatusOf(dependency) === 'success',
       );
     });
   }
@@ -96,7 +96,9 @@ export class PipelineScheduler {
       return { accepted: true, retryScheduled: true, retryDelayMs: backoffMs(state.attempt) };
     }
 
-    this.skipDependentsOf(name);
+    if (!this.definitionOf(name).allowFailure) {
+      this.skipDependentsOf(name);
+    }
     return { accepted: true, retryScheduled: false };
   }
 
@@ -114,6 +116,14 @@ export class PipelineScheduler {
       }
     }
     return affected;
+  }
+
+  private effectiveStatusOf(name: string): JobStatus {
+    const status = this.stateOf(name).status;
+    if (status === 'failed' && this.definitionOf(name).allowFailure) {
+      return 'success';
+    }
+    return status;
   }
 
   private skipDependentsOf(name: string): void {

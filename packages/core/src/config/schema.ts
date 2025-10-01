@@ -37,12 +37,14 @@ const jobSchema = z.strictObject({
   artifacts: artifactsSchema.optional(),
   retry: retrySchema.optional(),
   timeout: duration.optional(),
+  allow_failure: z.boolean().optional(),
 });
 
 const defaultsSchema = z.strictObject({
   image: z.string().min(1).optional(),
   retry: retrySchema.optional(),
   timeout: duration.optional(),
+  allow_failure: z.boolean().optional(),
 });
 
 export const rawConfigSchema = z.strictObject({

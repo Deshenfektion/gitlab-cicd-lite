@@ -224,3 +224,69 @@ jobs:
     expect(scheduler.complete('flaky', failure('timeout')).retryDelayMs).toBe(4_000);
   });
 });
+
+describe('PipelineScheduler allow_failure', () => {
+  const tolerant = `
+jobs:
+  lint:
+    script: echo
+    allow_failure: true
+  build:
+    script: echo
+  deploy:
+    script: echo
+    needs: [lint, build]
+`;
+
+  it('does not skip jobs behind a tolerated failure', () => {
+    const scheduler = schedulerFor(tolerant);
+    scheduler.start('lint');
+    scheduler.complete('lint', failure('script_failure', 1));
+    scheduler.start('build');
+    scheduler.complete('build', success());
+
+    expect(scheduler.statusOf('lint')).toBe('failed');
+    expect(scheduler.statusOf('deploy')).toBe('pending');
+    expect(scheduler.ready()).toEqual(['deploy']);
+  });
+
+  it('keeps the pipeline green when only tolerated jobs failed', () => {
+    const scheduler = schedulerFor(tolerant);
+    for (const [name, outcome] of [
+      ['lint', failure('script_failure', 1)],
+      ['build', success()],
+      ['deploy', success()],
+    ] as const) {
+      scheduler.start(name);
+      scheduler.complete(name, outcome);
+    }
+    expect(scheduler.status).toBe('success');
+  });
+
+  it('still fails the pipeline for an intolerant job', () => {
+    const scheduler = schedulerFor(tolerant);
+    scheduler.start('build');
+    scheduler.complete('build', failure('script_failure', 1));
+    expect(scheduler.statusOf('deploy')).toBe('skipped');
+    expect(scheduler.status).toBe('running');
+
+    scheduler.start('lint');
+    scheduler.complete('lint', success());
+    expect(scheduler.status).toBe('failed');
+  });
+
+  it('exhausts retries before tolerating the failure', () => {
+    const scheduler = schedulerFor(`
+jobs:
+  flaky:
+    script: echo
+    allow_failure: true
+    retry: 1
+`);
+    scheduler.start('flaky');
+    expect(scheduler.complete('flaky', failure('timeout')).retryScheduled).toBe(true);
+    scheduler.start('flaky');
+    expect(scheduler.complete('flaky', failure('timeout')).retryScheduled).toBe(false);
+    expect(scheduler.status).toBe('success');
+  });
+});

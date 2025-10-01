@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { RetryPolicy } from '../config/types.js';
 import { backoffMs, shouldRetry } from './retry.js';
 
-const policy = (max: number, when: RetryPolicy['when'] = ['always']): RetryPolicy => ({ max, when });
+const policy = (max: number, when: RetryPolicy['when'] = ['always']): RetryPolicy => ({
+  max,
+  when,
+});
 
 describe('shouldRetry', () => {
   it('never retries when max is zero', () => {
