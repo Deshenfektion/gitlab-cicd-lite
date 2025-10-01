@@ -55,6 +55,7 @@ validation instead of silently changing the meaning of a pipeline.
 | `artifacts` | map                       | none                          | Files to keep after the job succeeds.            |
 | `retry`     | int or map                | `0`                           | How often a failed job is retried.               |
 | `timeout`   | duration                  | `default.timeout` or `1h`     | Wall clock limit for a single attempt.           |
+| `allow_failure` | boolean               | `false`                       | Let the pipeline continue when this job fails.   |
 
 ## Durations
 
@@ -90,3 +91,21 @@ retry:
 
 `when` restricts which failures are retried. `always` covers every failure kind
 and is the default.
+
+## allow_failure
+
+A job marked `allow_failure: true` still reports `failed`, but it does not block
+its dependents and it does not turn the pipeline red:
+
+```yaml
+jobs:
+  lint:
+    script: npm run lint
+    allow_failure: true
+  deploy:
+    needs: [lint]
+    script: ./deploy.sh
+```
+
+Retries are evaluated first. A job only becomes a tolerated failure once its
+retry budget is exhausted.
