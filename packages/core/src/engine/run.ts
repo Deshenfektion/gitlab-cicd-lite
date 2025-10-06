@@ -97,8 +97,8 @@ export class PipelineRun {
   private async launch(name: string): Promise<void> {
     const attempt = this.scheduler.start(name);
     this.inFlight += 1;
-    this.listener.onJobStarted?.(name, attempt);
     this.emitStatus();
+    this.listener.onJobStarted?.(name, attempt);
 
     let outcome: JobOutcome;
     try {
