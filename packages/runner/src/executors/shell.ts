@@ -11,6 +11,21 @@ export interface ShellExecutorOptions {
   readonly shell?: string;
 }
 
+function killProcessTree(pid: number | undefined, signal: NodeJS.Signals): void {
+  if (pid === undefined) {
+    return;
+  }
+  try {
+    process.kill(-pid, signal);
+  } catch {
+    try {
+      process.kill(pid, signal);
+    } catch {
+      return;
+    }
+  }
+}
+
 export class ShellExecutor implements JobExecutor {
   readonly id = 'shell';
 
@@ -31,6 +46,7 @@ export class ShellExecutor implements JobExecutor {
         cwd,
         env: { ...process.env, CI: 'true', CI_JOB_NAME: context.jobName },
         stdio: ['pipe', 'pipe', 'pipe'],
+        detached: true,
       });
 
       const stdout = new LineSplitter((text) => context.onLog({ stream: 'stdout', text }));
@@ -42,7 +58,7 @@ export class ShellExecutor implements JobExecutor {
       child.stderr.on('data', (chunk: string) => stderr.push(chunk));
 
       const onAbort = (): void => {
-        child.kill('SIGTERM');
+        killProcessTree(child.pid, 'SIGTERM');
       };
       context.signal.addEventListener('abort', onAbort, { once: true });
 
