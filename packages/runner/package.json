@@ -20,6 +20,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@cicd/core": "*"
+    "@cicd/core": "*",
+    "dockerode": "~4.0.7"
+  },
+  "devDependencies": {
+    "@types/dockerode": "~3.3.42"
   }
 }
