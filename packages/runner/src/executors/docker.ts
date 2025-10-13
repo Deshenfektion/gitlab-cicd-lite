@@ -1,17 +1,16 @@
-import { mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
 import type { JobContext, JobExecutor, JobOutcome } from '@cicd/core';
 import { failure, success } from '@cicd/core';
 import type { ContainerHandle, DockerClient } from '../docker/client.js';
 import { DockerStreamDemultiplexer } from '../docker/demultiplex.js';
 import { LineSplitter } from '../logs/line-splitter.js';
 import { buildShellScript } from '../script.js';
+import type { WorkspaceManager } from '../workspace.js';
 
 export const CONTAINER_WORKDIR = '/workspace';
 
 export interface DockerExecutorOptions {
   readonly client: DockerClient;
-  readonly workspaceRoot: string;
+  readonly workspaces: WorkspaceManager;
   readonly stopTimeoutSeconds?: number;
 }
 
@@ -21,8 +20,7 @@ export class DockerExecutor implements JobExecutor {
   constructor(private readonly options: DockerExecutorOptions) {}
 
   async run(context: JobContext): Promise<JobOutcome> {
-    const workspace = join(this.options.workspaceRoot, context.pipelineId, context.jobName);
-    await mkdir(workspace, { recursive: true });
+    const workspace = await this.options.workspaces.create(context.pipelineId, context.jobName);
 
     const image = context.definition.image;
     let container: ContainerHandle | null = null;

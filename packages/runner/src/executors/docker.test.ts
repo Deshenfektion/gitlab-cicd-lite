@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { JobContext, JobDefinition, JobOutcome, LogLine } from '@cicd/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FakeDockerClient, type FakeDockerClientOptions } from '../docker/fake-client.js';
+import { WorkspaceManager } from '../workspace.js';
 import { CONTAINER_WORKDIR, DockerExecutor } from './docker.js';
 
 let workspaceRoot: string;
@@ -41,7 +42,7 @@ async function execute(
   signal = new AbortController().signal,
 ): Promise<Harness> {
   const client = new FakeDockerClient(options);
-  const executor = new DockerExecutor({ client, workspaceRoot });
+  const executor = new DockerExecutor({ client, workspaces: new WorkspaceManager(workspaceRoot) });
   const lines: LogLine[] = [];
 
   const context: JobContext = {

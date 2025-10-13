@@ -6,3 +6,4 @@ export * from './docker/dockerode-client.js';
 export * from './executors/shell.js';
 export * from './executors/docker.js';
 export * from './docker/fake-client.js';
+export * from './workspace.js';

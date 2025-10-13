@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { JobContext, JobDefinition, JobOutcome, LogLine } from '@cicd/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { WorkspaceManager } from '../workspace.js';
 import { ShellExecutor } from './shell.js';
 
 let workspaceRoot: string;
@@ -36,7 +37,7 @@ async function run(
   script: readonly string[],
   signal = new AbortController().signal,
 ): Promise<RunResult> {
-  const executor = new ShellExecutor({ workspaceRoot });
+  const executor = new ShellExecutor({ workspaces: new WorkspaceManager(workspaceRoot) });
   const lines: LogLine[] = [];
   const context: JobContext = {
     pipelineId: 'p1',
@@ -118,7 +119,10 @@ describe('ShellExecutor', () => {
   });
 
   it('fails cleanly when the shell binary does not exist', async () => {
-    const executor = new ShellExecutor({ workspaceRoot, shell: '/nonexistent/sh' });
+    const executor = new ShellExecutor({
+      workspaces: new WorkspaceManager(workspaceRoot),
+      shell: '/nonexistent/sh',
+    });
     const outcome = await executor.run({
       pipelineId: 'p1',
       jobName: 'job',

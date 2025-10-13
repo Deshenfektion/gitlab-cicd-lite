@@ -1,13 +1,12 @@
 import { spawn } from 'node:child_process';
-import { mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
 import type { JobContext, JobExecutor, JobOutcome } from '@cicd/core';
 import { failure, success } from '@cicd/core';
 import { LineSplitter } from '../logs/line-splitter.js';
 import { buildShellScript } from '../script.js';
+import type { WorkspaceManager } from '../workspace.js';
 
 export interface ShellExecutorOptions {
-  readonly workspaceRoot: string;
+  readonly workspaces: WorkspaceManager;
   readonly shell?: string;
 }
 
@@ -36,8 +35,7 @@ export class ShellExecutor implements JobExecutor {
   }
 
   async run(context: JobContext): Promise<JobOutcome> {
-    const cwd = join(this.options.workspaceRoot, context.pipelineId, context.jobName);
-    await mkdir(cwd, { recursive: true });
+    const cwd = await this.options.workspaces.create(context.pipelineId, context.jobName);
 
     const script = buildShellScript(context.definition.script);
 
