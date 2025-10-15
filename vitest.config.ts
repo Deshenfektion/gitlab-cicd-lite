@@ -9,6 +9,7 @@ export default defineConfig({
     alias: {
       '@cicd/core': resolvePackage('core'),
       '@cicd/runner': resolvePackage('runner'),
+      '@cicd/server': resolvePackage('server'),
     },
   },
   test: {

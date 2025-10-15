@@ -6,6 +6,9 @@
     },
     {
       "path": "./packages/runner"
+    },
+    {
+      "path": "./packages/server"
     }
   ]
 }

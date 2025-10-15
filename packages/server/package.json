@@ -1,0 +1,33 @@
+{
+  "name": "@cicd/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "REST API, persistence and pipeline orchestration",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "cicd-server": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cicd/core": "*",
+    "@cicd/runner": "*",
+    "better-sqlite3": "~12.2.0",
+    "cors": "~2.8.5",
+    "express": "~5.1.0",
+    "pino": "~9.9.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "~7.6.13",
+    "@types/cors": "~2.8.19",
+    "@types/express": "~5.0.3",
+    "@types/supertest": "~6.0.3",
+    "supertest": "~7.1.1"
+  }
+}
