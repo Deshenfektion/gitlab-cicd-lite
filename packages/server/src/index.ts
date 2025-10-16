@@ -5,3 +5,6 @@ export * from './api/errors.js';
 export * from './db/connection.js';
 export * from './db/migrate.js';
 export * from './db/migrations.js';
+export * from './repositories/types.js';
+export * from './repositories/pipelines.js';
+export * from './repositories/jobs.js';
