@@ -131,7 +131,7 @@ export class PipelineRepository {
 
   list(limit = 50): readonly PipelineRecord[] {
     const rows = this.db
-      .prepare('SELECT * FROM pipelines ORDER BY created_at DESC LIMIT ?')
+      .prepare('SELECT * FROM pipelines ORDER BY created_at DESC, rowid DESC LIMIT ?')
       .all(limit) as PipelineRow[];
     return rows.map(toPipeline);
   }
