@@ -1,18 +1,21 @@
 import { createApp } from './api/app.js';
 import { loadConfig } from './config.js';
-import { createLogger } from './logger.js';
+import { createContext } from './context.js';
 
 const config = loadConfig();
-const logger = createLogger(config.logLevel);
-const app = createApp();
+const context = createContext(config);
+const app = createApp(context);
 
 const server = app.listen(config.port, config.host, () => {
-  logger.info({ port: config.port, host: config.host }, 'server listening');
+  context.logger.info({ port: config.port, host: config.host }, 'server listening');
 });
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
-    logger.info({ signal }, 'shutting down');
-    server.close(() => process.exit(0));
+    context.logger.info({ signal }, 'shutting down');
+    server.close(() => {
+      context.close();
+      process.exit(0);
+    });
   });
 }

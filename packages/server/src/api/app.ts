@@ -1,8 +1,10 @@
 import cors from 'cors';
 import express, { type Express } from 'express';
+import type { AppContext } from '../context.js';
 import { errorHandler } from './errors.js';
+import { createPipelineRouter } from './pipelines.js';
 
-export function createApp(): Express {
+export function createApp(context: AppContext): Express {
   const app = express();
 
   app.use(cors());
@@ -12,6 +14,8 @@ export function createApp(): Express {
   app.get('/api/health', (_request, response) => {
     response.json({ status: 'ok', uptime: Math.round(process.uptime()) });
   });
+
+  app.use('/api/pipelines', createPipelineRouter(context));
 
   app.use(errorHandler);
 
