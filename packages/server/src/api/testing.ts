@@ -1,11 +1,7 @@
+import { FakeExecutor, type JobExecutor } from '@cicd/core';
 import type { Express } from 'express';
 import { loadConfig, type ServerConfig } from '../config.js';
-import type { AppContext } from '../context.js';
-import { openDatabase } from '../db/connection.js';
-import { migrate } from '../db/migrate.js';
-import { createLogger } from '../logger.js';
-import { JobRepository } from '../repositories/jobs.js';
-import { PipelineRepository } from '../repositories/pipelines.js';
+import { createContext, type AppContext } from '../context.js';
 import { createApp } from './app.js';
 
 export interface TestHarness {
@@ -13,7 +9,10 @@ export interface TestHarness {
   readonly context: AppContext;
 }
 
-export function createTestContext(overrides: Partial<ServerConfig> = {}): AppContext {
+export function createTestContext(
+  overrides: Partial<ServerConfig> = {},
+  executor: JobExecutor = new FakeExecutor(),
+): AppContext {
   const config: ServerConfig = {
     ...loadConfig({}),
     databasePath: ':memory:',
@@ -21,20 +20,13 @@ export function createTestContext(overrides: Partial<ServerConfig> = {}): AppCon
     ...overrides,
   };
 
-  const db = openDatabase(config.databasePath);
-  migrate(db);
-
-  return {
-    config,
-    logger: createLogger(config.logLevel),
-    db,
-    pipelines: new PipelineRepository(db),
-    jobs: new JobRepository(db),
-    close: () => db.close(),
-  };
+  return createContext(config, executor);
 }
 
-export function createTestHarness(overrides: Partial<ServerConfig> = {}): TestHarness {
-  const context = createTestContext(overrides);
+export function createTestHarness(
+  overrides: Partial<ServerConfig> = {},
+  executor?: JobExecutor,
+): TestHarness {
+  const context = createTestContext(overrides, executor);
   return { app: createApp(context), context };
 }

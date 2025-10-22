@@ -18,3 +18,4 @@ export * from './engine/scheduler.js';
 export * from './engine/retry.js';
 export * from './engine/executor.js';
 export * from './engine/run.js';
+export * from './engine/testing.js';
