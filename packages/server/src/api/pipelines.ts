@@ -1,7 +1,8 @@
 import { loadPipeline, topologicalLayers } from '@cicd/core';
 import { Router, type Request } from 'express';
 import type { AppContext } from '../context.js';
-import { badRequest, notFound } from './errors.js';
+import { PipelineNotFoundError, PipelineNotStartableError } from '../services/orchestrator.js';
+import { badRequest, conflict, notFound } from './errors.js';
 import { serializeEdges, serializeJob, serializePipeline } from './serializers.js';
 
 interface CreateBody {
@@ -50,10 +51,7 @@ export function createPipelineRouter(context: AppContext): Router {
   });
 
   router.get('/:id', (request, response) => {
-    const pipeline = context.pipelines.findById(request.params.id);
-    if (pipeline === null) {
-      throw notFound(`pipeline ${request.params.id} not found`);
-    }
+    const pipeline = requirePipeline(context, request.params.id);
 
     const jobs = context.pipelines.jobsOf(pipeline.id);
     const edges = context.pipelines.edgesOf(pipeline.id);
@@ -67,5 +65,41 @@ export function createPipelineRouter(context: AppContext): Router {
     });
   });
 
+  router.post('/:id/start', (request, response) => {
+    const id = request.params.id;
+
+    try {
+      void context.orchestrator.start(id);
+    } catch (error) {
+      if (error instanceof PipelineNotFoundError) {
+        throw notFound(`pipeline ${id} not found`);
+      }
+      if (error instanceof PipelineNotStartableError) {
+        throw conflict(error.message);
+      }
+      throw error;
+    }
+
+    response.status(202).json({ pipeline: serializePipeline(requirePipeline(context, id)) });
+  });
+
+  router.post('/:id/cancel', (request, response) => {
+    const pipeline = requirePipeline(context, request.params.id);
+
+    if (!context.orchestrator.cancel(pipeline.id)) {
+      throw conflict(`pipeline ${pipeline.id} is not running`);
+    }
+
+    response.json({ pipeline: serializePipeline(requirePipeline(context, pipeline.id)) });
+  });
+
   return router;
+}
+
+function requirePipeline(context: AppContext, id: string) {
+  const pipeline = context.pipelines.findById(id);
+  if (pipeline === null) {
+    throw notFound(`pipeline ${id} not found`);
+  }
+  return pipeline;
 }
