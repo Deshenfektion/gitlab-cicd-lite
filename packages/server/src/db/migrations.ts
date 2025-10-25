@@ -48,4 +48,20 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX idx_job_dependencies_depends_on ON job_dependencies(depends_on_id);
     `,
   },
+  {
+    id: 2,
+    name: 'job_logs',
+    sql: `
+      CREATE TABLE job_logs (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+        attempt INTEGER NOT NULL,
+        stream TEXT NOT NULL CHECK (stream IN ('stdout', 'stderr')),
+        message TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX idx_job_logs_job ON job_logs(job_id, seq);
+    `,
+  },
 ];

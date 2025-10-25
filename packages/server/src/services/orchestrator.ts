@@ -7,11 +7,13 @@ import {
 } from '@cicd/core';
 import type { Logger } from '../logger.js';
 import type { JobRepository } from '../repositories/jobs.js';
+import type { LogRepository } from '../repositories/logs.js';
 import type { PipelineRepository } from '../repositories/pipelines.js';
 
 export interface OrchestratorDeps {
   readonly pipelines: PipelineRepository;
   readonly jobs: JobRepository;
+  readonly logs: LogRepository;
   readonly logger: Logger;
   readonly executor: JobExecutor;
   readonly concurrency: number;
@@ -96,9 +98,15 @@ export class Orchestrator {
   }
 
   private createListener(pipelineId: string): RunListener {
-    const { jobs, pipelines, logger } = this.deps;
+    const { jobs, pipelines, logs, logger } = this.deps;
 
     return {
+      onJobLog: (name, attempt, line) => {
+        const job = jobs.findByName(pipelineId, name);
+        if (job !== null) {
+          logs.append({ jobId: job.id, attempt, stream: line.stream, message: line.text });
+        }
+      },
       onJobStarted: (name, attempt) => {
         jobs.markStarted(pipelineId, name, attempt);
         logger.debug({ pipelineId, job: name, attempt }, 'job started');

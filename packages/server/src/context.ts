@@ -5,6 +5,7 @@ import { openDatabase, type Db } from './db/connection.js';
 import { migrate } from './db/migrate.js';
 import { createLogger, type Logger } from './logger.js';
 import { JobRepository } from './repositories/jobs.js';
+import { LogRepository } from './repositories/logs.js';
 import { PipelineRepository } from './repositories/pipelines.js';
 import { Orchestrator } from './services/orchestrator.js';
 
@@ -14,6 +15,7 @@ export interface AppContext {
   readonly db: Db;
   readonly pipelines: PipelineRepository;
   readonly jobs: JobRepository;
+  readonly logs: LogRepository;
   readonly orchestrator: Orchestrator;
   close(): void;
 }
@@ -28,10 +30,12 @@ export function createContext(
 
   const pipelines = new PipelineRepository(db);
   const jobs = new JobRepository(db);
+  const logs = new LogRepository(db);
 
   const orchestrator = new Orchestrator({
     pipelines,
     jobs,
+    logs,
     logger,
     executor:
       executor ?? createExecutor({ kind: config.executor, workspaceRoot: config.workspaceRoot }),
@@ -44,6 +48,7 @@ export function createContext(
     db,
     pipelines,
     jobs,
+    logs,
     orchestrator,
     close: () => db.close(),
   };
