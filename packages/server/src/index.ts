@@ -12,3 +12,4 @@ export * from './api/errors.js';
 export * from './api/serializers.js';
 export * from './services/orchestrator.js';
 export * from './repositories/logs.js';
+export * from './api/jobs.js';

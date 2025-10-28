@@ -2,6 +2,7 @@ import cors from 'cors';
 import express, { type Express } from 'express';
 import type { AppContext } from '../context.js';
 import { errorHandler } from './errors.js';
+import { createJobRouter } from './jobs.js';
 import { createPipelineRouter } from './pipelines.js';
 
 export function createApp(context: AppContext): Express {
@@ -16,6 +17,7 @@ export function createApp(context: AppContext): Express {
   });
 
   app.use('/api/pipelines', createPipelineRouter(context));
+  app.use('/api/jobs', createJobRouter(context));
 
   app.use(errorHandler);
 
