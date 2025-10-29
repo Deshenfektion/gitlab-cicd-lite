@@ -120,8 +120,8 @@ export class Orchestrator {
         });
         logger.debug({ pipelineId, job: name, attempt, status }, 'job finished');
       },
-      onJobSkipped: (name) => {
-        jobs.setStatus(pipelineId, name, 'skipped');
+      onJobStatusChanged: (name, status) => {
+        jobs.setStatus(pipelineId, name, status);
       },
       onStatusChanged: (status) => {
         pipelines.updateStatus(pipelineId, status);

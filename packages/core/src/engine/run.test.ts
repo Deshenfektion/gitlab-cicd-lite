@@ -98,7 +98,13 @@ describe('PipelineRun', () => {
     const skipped: string[] = [];
 
     const status = await runOf(linear, executor, {
-      listener: { onJobSkipped: (name) => skipped.push(name) },
+      listener: {
+        onJobStatusChanged: (name, jobStatus) => {
+          if (jobStatus === 'skipped') {
+            skipped.push(name);
+          }
+        },
+      },
     }).start();
 
     expect(status).toBe('failed');
@@ -217,12 +223,17 @@ jobs:
         }),
     });
 
-    const run = runOf(linear, executor);
+    const changes: Array<[string, string]> = [];
+    const run = runOf(linear, executor, {
+      listener: { onJobStatusChanged: (name, jobStatus) => changes.push([name, jobStatus]) },
+    });
     const finished = run.start();
     await started.promise;
     run.cancel();
 
     await expect(finished).resolves.toBe('canceled');
+    expect(changes).toContainEqual(['test', 'canceled']);
+    expect(changes).toContainEqual(['deploy', 'canceled']);
     expect(run.scheduler.statusOf('build')).toBe('canceled');
     expect(run.scheduler.statusOf('deploy')).toBe('canceled');
     expect(executor.executions).toHaveLength(1);

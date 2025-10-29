@@ -9,7 +9,7 @@ export interface RunListener {
   onJobStarted?(name: string, attempt: number): void;
   onJobLog?(name: string, attempt: number, line: LogLine): void;
   onJobFinished?(name: string, attempt: number, outcome: JobOutcome, status: JobStatus): void;
-  onJobSkipped?(name: string): void;
+  onJobStatusChanged?(name: string, status: JobStatus): void;
   onStatusChanged?(status: PipelineStatus): void;
 }
 
@@ -73,11 +73,16 @@ export class PipelineRun {
   }
 
   cancel(): void {
+    const before = this.statusSnapshot();
     const interrupted = this.scheduler.cancel();
+
     for (const name of interrupted) {
       this.controllers.get(name)?.abort();
     }
+
     this.held.clear();
+    this.reportStatusChanges(before);
+    this.emitStatus();
     this.notify();
   }
 
@@ -109,12 +114,12 @@ export class PipelineRun {
 
     this.inFlight -= 1;
 
-    const before = new Map(this.scheduler.snapshot().map((job) => [job.name, job.status]));
+    const before = this.statusSnapshot();
     const result = this.scheduler.complete(name, outcome);
 
     if (result.accepted) {
       this.listener.onJobFinished?.(name, attempt, outcome, this.scheduler.statusOf(name));
-      this.reportSkips(before);
+      this.reportStatusChanges(before, name);
 
       if (result.retryScheduled) {
         this.hold(name, result.retryDelayMs ?? 0);
@@ -169,10 +174,14 @@ export class PipelineRun {
     });
   }
 
-  private reportSkips(before: ReadonlyMap<string, JobStatus>): void {
+  private statusSnapshot(): ReadonlyMap<string, JobStatus> {
+    return new Map(this.scheduler.snapshot().map((job) => [job.name, job.status]));
+  }
+
+  private reportStatusChanges(before: ReadonlyMap<string, JobStatus>, skip?: string): void {
     for (const job of this.scheduler.snapshot()) {
-      if (job.status === 'skipped' && before.get(job.name) !== 'skipped') {
-        this.listener.onJobSkipped?.(job.name);
+      if (job.name !== skip && before.get(job.name) !== job.status) {
+        this.listener.onJobStatusChanged?.(job.name, job.status);
       }
     }
   }
