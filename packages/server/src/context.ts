@@ -7,6 +7,7 @@ import { createLogger, type Logger } from './logger.js';
 import { JobRepository } from './repositories/jobs.js';
 import { LogRepository } from './repositories/logs.js';
 import { PipelineRepository } from './repositories/pipelines.js';
+import { EventBus } from './services/events.js';
 import { Orchestrator } from './services/orchestrator.js';
 
 export interface AppContext {
@@ -16,6 +17,7 @@ export interface AppContext {
   readonly pipelines: PipelineRepository;
   readonly jobs: JobRepository;
   readonly logs: LogRepository;
+  readonly events: EventBus;
   readonly orchestrator: Orchestrator;
   close(): void;
 }
@@ -31,12 +33,14 @@ export function createContext(
   const pipelines = new PipelineRepository(db);
   const jobs = new JobRepository(db);
   const logs = new LogRepository(db);
+  const events = new EventBus();
 
   const orchestrator = new Orchestrator({
     pipelines,
     jobs,
     logs,
     logger,
+    events,
     executor:
       executor ?? createExecutor({ kind: config.executor, workspaceRoot: config.workspaceRoot }),
     concurrency: config.concurrency,
@@ -49,6 +53,7 @@ export function createContext(
     pipelines,
     jobs,
     logs,
+    events,
     orchestrator,
     close: () => db.close(),
   };

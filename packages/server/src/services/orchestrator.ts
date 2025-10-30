@@ -2,6 +2,7 @@ import {
   PipelineRun,
   loadPipeline,
   type JobExecutor,
+  type JobStatus,
   type PipelineStatus,
   type RunListener,
 } from '@cicd/core';
@@ -9,12 +10,14 @@ import type { Logger } from '../logger.js';
 import type { JobRepository } from '../repositories/jobs.js';
 import type { LogRepository } from '../repositories/logs.js';
 import type { PipelineRepository } from '../repositories/pipelines.js';
+import type { EventBus } from './events.js';
 
 export interface OrchestratorDeps {
   readonly pipelines: PipelineRepository;
   readonly jobs: JobRepository;
   readonly logs: LogRepository;
   readonly logger: Logger;
+  readonly events: EventBus;
   readonly executor: JobExecutor;
   readonly concurrency: number;
 }
@@ -98,17 +101,36 @@ export class Orchestrator {
   }
 
   private createListener(pipelineId: string): RunListener {
-    const { jobs, pipelines, logs, logger } = this.deps;
+    const { jobs, pipelines, logs, logger, events } = this.deps;
 
     return {
       onJobLog: (name, attempt, line) => {
         const job = jobs.findByName(pipelineId, name);
-        if (job !== null) {
-          logs.append({ jobId: job.id, attempt, stream: line.stream, message: line.text });
+        if (job === null) {
+          return;
         }
+
+        const stored = logs.append({
+          jobId: job.id,
+          attempt,
+          stream: line.stream,
+          message: line.text,
+        });
+
+        events.publish({
+          type: 'job.log',
+          pipelineId,
+          jobId: job.id,
+          jobName: name,
+          attempt,
+          seq: stored.seq,
+          stream: stored.stream,
+          message: stored.message,
+        });
       },
       onJobStarted: (name, attempt) => {
         jobs.markStarted(pipelineId, name, attempt);
+        this.publishJobStatus(pipelineId, name, 'running', attempt);
         logger.debug({ pipelineId, job: name, attempt }, 'job started');
       },
       onJobFinished: (name, attempt, outcome, status) => {
@@ -118,15 +140,39 @@ export class Orchestrator {
           failureReason: outcome.kind === 'failure' ? outcome.reason : null,
           failureMessage: outcome.kind === 'failure' ? (outcome.message ?? null) : null,
         });
+        this.publishJobStatus(pipelineId, name, status, attempt);
         logger.debug({ pipelineId, job: name, attempt, status }, 'job finished');
       },
       onJobStatusChanged: (name, status) => {
         jobs.setStatus(pipelineId, name, status);
+        this.publishJobStatus(pipelineId, name, status);
       },
       onStatusChanged: (status) => {
         pipelines.updateStatus(pipelineId, status);
+        events.publish({ type: 'pipeline.status', pipelineId, status });
         logger.info({ pipelineId, status }, 'pipeline status changed');
       },
     };
+  }
+
+  private publishJobStatus(
+    pipelineId: string,
+    name: string,
+    status: JobStatus,
+    attempt?: number,
+  ): void {
+    const job = this.deps.jobs.findByName(pipelineId, name);
+    if (job === null) {
+      return;
+    }
+
+    this.deps.events.publish({
+      type: 'job.status',
+      pipelineId,
+      jobId: job.id,
+      jobName: name,
+      status,
+      attempt: attempt ?? job.attempt,
+    });
   }
 }
