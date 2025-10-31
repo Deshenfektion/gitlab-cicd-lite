@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@cicd/core": "*",
-    "dockerode": "~4.0.7"
+    "dockerode": "~4.0.7",
+    "tar": "~7.4.3"
   },
   "devDependencies": {
     "@types/dockerode": "~3.3.42"

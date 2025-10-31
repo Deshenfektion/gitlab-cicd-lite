@@ -1,7 +1,8 @@
 import { formatDuration } from '../config/duration.js';
 import type { JobStatus, PipelineStatus } from '../config/types.js';
 import type { PipelineGraph } from '../graph/dag.js';
-import type { JobExecutor, LogLine } from './executor.js';
+import { artifactSources } from '../graph/traverse.js';
+import type { CollectedArtifact, JobExecutor, LogLine } from './executor.js';
 import { failure, type JobOutcome } from './outcome.js';
 import { PipelineScheduler } from './scheduler.js';
 
@@ -9,6 +10,7 @@ export interface RunListener {
   onJobStarted?(name: string, attempt: number): void;
   onJobLog?(name: string, attempt: number, line: LogLine): void;
   onJobFinished?(name: string, attempt: number, outcome: JobOutcome, status: JobStatus): void;
+  onJobArtifact?(name: string, attempt: number, artifact: CollectedArtifact): void;
   onJobStatusChanged?(name: string, status: JobStatus): void;
   onStatusChanged?(status: PipelineStatus): void;
 }
@@ -40,7 +42,7 @@ export class PipelineRun {
   private started = false;
 
   constructor(
-    graph: PipelineGraph,
+    private readonly graph: PipelineGraph,
     private readonly executor: JobExecutor,
     options: RunOptions = {},
   ) {
@@ -155,8 +157,10 @@ export class PipelineRun {
           jobName: name,
           attempt,
           definition,
+          artifactSources: artifactSources(this.graph, name),
           signal: controller.signal,
           onLog: (line) => this.listener.onJobLog?.(name, attempt, line),
+          onArtifact: (artifact) => this.listener.onJobArtifact?.(name, attempt, artifact),
         }),
         timeout,
       ]);
