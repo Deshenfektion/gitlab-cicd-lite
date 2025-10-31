@@ -4,6 +4,7 @@ import type { AppContext } from '../context.js';
 import { PipelineNotFoundError, PipelineNotStartableError } from '../services/orchestrator.js';
 import { badRequest, conflict, notFound } from './errors.js';
 import { serializeEdges, serializeJob, serializePipeline } from './serializers.js';
+import { openEventStream } from './stream.js';
 
 interface CreateBody {
   name?: unknown;
@@ -91,6 +92,22 @@ export function createPipelineRouter(context: AppContext): Router {
     }
 
     response.json({ pipeline: serializePipeline(requirePipeline(context, pipeline.id)) });
+  });
+
+  router.get('/:id/events', (request, response) => {
+    const pipeline = requirePipeline(context, request.params.id);
+    const stream = openEventStream(request, response);
+
+    stream.send('pipeline.snapshot', {
+      pipeline: serializePipeline(pipeline),
+      jobs: context.pipelines.jobsOf(pipeline.id).map(serializeJob),
+    });
+
+    const unsubscribe = context.events.subscribe(pipeline.id, (event) => {
+      stream.send(event.type, event);
+    });
+
+    stream.onClose(unsubscribe);
   });
 
   return router;

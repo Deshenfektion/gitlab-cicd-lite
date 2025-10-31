@@ -14,3 +14,4 @@ export * from './services/orchestrator.js';
 export * from './repositories/logs.js';
 export * from './api/jobs.js';
 export * from './services/events.js';
+export * from './api/stream.js';
