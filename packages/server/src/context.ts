@@ -7,6 +7,7 @@ import { createLogger, type Logger } from './logger.js';
 import { JobRepository } from './repositories/jobs.js';
 import { LogRepository } from './repositories/logs.js';
 import { PipelineRepository } from './repositories/pipelines.js';
+import { RunnerRepository } from './repositories/runners.js';
 import { EventBus } from './services/events.js';
 import { Orchestrator } from './services/orchestrator.js';
 
@@ -17,6 +18,7 @@ export interface AppContext {
   readonly pipelines: PipelineRepository;
   readonly jobs: JobRepository;
   readonly logs: LogRepository;
+  readonly runners: RunnerRepository;
   readonly events: EventBus;
   readonly orchestrator: Orchestrator;
   close(): void;
@@ -33,7 +35,18 @@ export function createContext(
   const pipelines = new PipelineRepository(db);
   const jobs = new JobRepository(db);
   const logs = new LogRepository(db);
+  const runners = new RunnerRepository(db);
   const events = new EventBus();
+
+  const executorId =
+    executor ?? createExecutor({ kind: config.executor, workspaceRoot: config.workspaceRoot });
+
+  runners.register({
+    id: 'local',
+    name: 'local runner',
+    executor: executorId.id,
+    concurrency: config.concurrency,
+  });
 
   const orchestrator = new Orchestrator({
     pipelines,
@@ -41,8 +54,7 @@ export function createContext(
     logs,
     logger,
     events,
-    executor:
-      executor ?? createExecutor({ kind: config.executor, workspaceRoot: config.workspaceRoot }),
+    executor: executorId,
     concurrency: config.concurrency,
   });
 
@@ -53,6 +65,7 @@ export function createContext(
     pipelines,
     jobs,
     logs,
+    runners,
     events,
     orchestrator,
     close: () => db.close(),

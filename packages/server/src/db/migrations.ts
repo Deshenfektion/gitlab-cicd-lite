@@ -64,4 +64,19 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX idx_job_logs_job ON job_logs(job_id, seq);
     `,
   },
+  {
+    id: 3,
+    name: 'runners',
+    sql: `
+      CREATE TABLE runners (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        executor TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('online', 'offline')),
+        concurrency INTEGER NOT NULL,
+        registered_at INTEGER NOT NULL,
+        last_seen_at INTEGER NOT NULL
+      );
+    `,
+  },
 ];
