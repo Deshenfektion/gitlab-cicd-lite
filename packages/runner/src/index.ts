@@ -9,3 +9,4 @@ export * from './docker/fake-client.js';
 export * from './workspace.js';
 export * from './factory.js';
 export * from './artifacts/store.js';
+export * from './artifacts/filesystem-store.js';
