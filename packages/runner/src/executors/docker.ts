@@ -1,5 +1,6 @@
 import type { JobContext, JobExecutor, JobOutcome } from '@cicd/core';
 import { failure, success } from '@cicd/core';
+import type { ArtifactCoordinator } from '../artifacts/coordinator.js';
 import type { ContainerHandle, DockerClient } from '../docker/client.js';
 import { DockerStreamDemultiplexer } from '../docker/demultiplex.js';
 import { LineSplitter } from '../logs/line-splitter.js';
@@ -11,6 +12,7 @@ export const CONTAINER_WORKDIR = '/workspace';
 export interface DockerExecutorOptions {
   readonly client: DockerClient;
   readonly workspaces: WorkspaceManager;
+  readonly artifacts?: ArtifactCoordinator;
   readonly stopTimeoutSeconds?: number;
 }
 
@@ -21,6 +23,7 @@ export class DockerExecutor implements JobExecutor {
 
   async run(context: JobContext): Promise<JobOutcome> {
     const workspace = await this.options.workspaces.create(context.pipelineId, context.jobName);
+    await this.options.artifacts?.restoreDependencies(context, workspace);
 
     const image = context.definition.image;
     let container: ContainerHandle | null = null;
@@ -41,7 +44,11 @@ export class DockerExecutor implements JobExecutor {
         },
       });
 
-      return await this.supervise(container, context);
+      const outcome = await this.supervise(container, context);
+      if (outcome.kind === 'success') {
+        await this.options.artifacts?.collect(context, workspace);
+      }
+      return outcome;
     } catch (error) {
       return failure('runner_failure', null, describe(error));
     } finally {

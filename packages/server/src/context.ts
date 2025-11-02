@@ -39,7 +39,12 @@ export function createContext(
   const events = new EventBus();
 
   const executorId =
-    executor ?? createExecutor({ kind: config.executor, workspaceRoot: config.workspaceRoot });
+    executor ??
+    createExecutor({
+      kind: config.executor,
+      workspaceRoot: config.workspaceRoot,
+      artifactRoot: config.artifactRoot,
+    });
 
   runners.register({
     id: 'local',

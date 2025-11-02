@@ -1,12 +1,14 @@
 import { spawn } from 'node:child_process';
 import type { JobContext, JobExecutor, JobOutcome } from '@cicd/core';
 import { failure, success } from '@cicd/core';
+import type { ArtifactCoordinator } from '../artifacts/coordinator.js';
 import { LineSplitter } from '../logs/line-splitter.js';
 import { buildShellScript } from '../script.js';
 import type { WorkspaceManager } from '../workspace.js';
 
 export interface ShellExecutorOptions {
   readonly workspaces: WorkspaceManager;
+  readonly artifacts?: ArtifactCoordinator;
   readonly shell?: string;
 }
 
@@ -36,10 +38,11 @@ export class ShellExecutor implements JobExecutor {
 
   async run(context: JobContext): Promise<JobOutcome> {
     const cwd = await this.options.workspaces.create(context.pipelineId, context.jobName);
+    await this.options.artifacts?.restoreDependencies(context, cwd);
 
     const script = buildShellScript(context.definition.script);
 
-    return await new Promise<JobOutcome>((resolve) => {
+    const outcome = await new Promise<JobOutcome>((resolve) => {
       const child = spawn(this.shell, ['-s'], {
         cwd,
         env: { ...process.env, CI: 'true', CI_JOB_NAME: context.jobName },
@@ -91,5 +94,11 @@ export class ShellExecutor implements JobExecutor {
 
       child.stdin.end(script);
     });
+
+    if (outcome.kind === 'success') {
+      await this.options.artifacts?.collect(context, cwd);
+    }
+
+    return outcome;
   }
 }
