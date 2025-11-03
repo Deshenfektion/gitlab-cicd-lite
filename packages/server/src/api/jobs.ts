@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { AppContext } from '../context.js';
 import type { JobRecord } from '../repositories/types.js';
+import { serializeArtifact } from './artifacts.js';
 import { notFound } from './errors.js';
 import { serializeJob } from './serializers.js';
 import { openEventStream } from './stream.js';
@@ -32,6 +33,11 @@ export function createJobRouter(context: AppContext): Router {
       lines,
       nextCursor: lines.length === 0 ? after : (lines[lines.length - 1] as { seq: number }).seq,
     });
+  });
+
+  router.get('/:id/artifacts', (request, response) => {
+    const job = requireJob(context, request.params.id);
+    response.json({ artifacts: context.artifacts.listByJob(job.id).map(serializeArtifact) });
   });
 
   router.get('/:id/logs/stream', (request, response) => {

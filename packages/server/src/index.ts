@@ -17,3 +17,4 @@ export * from './services/events.js';
 export * from './api/stream.js';
 export * from './repositories/runners.js';
 export * from './repositories/artifacts.js';
+export * from './api/artifacts.js';

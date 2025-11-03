@@ -2,6 +2,7 @@ import cors from 'cors';
 import express, { type Express } from 'express';
 import type { AppContext } from '../context.js';
 import { errorHandler } from './errors.js';
+import { createArtifactRouter } from './artifacts.js';
 import { createJobRouter } from './jobs.js';
 import { createPipelineRouter } from './pipelines.js';
 import { createRunnerRouter } from './runners.js';
@@ -20,6 +21,7 @@ export function createApp(context: AppContext): Express {
   app.use('/api/pipelines', createPipelineRouter(context));
   app.use('/api/jobs', createJobRouter(context));
   app.use('/api/runners', createRunnerRouter(context));
+  app.use('/api/artifacts', createArtifactRouter(context));
 
   app.use(errorHandler);
 

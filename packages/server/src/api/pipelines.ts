@@ -3,6 +3,7 @@ import { Router, type Request } from 'express';
 import type { AppContext } from '../context.js';
 import { PipelineNotFoundError, PipelineNotStartableError } from '../services/orchestrator.js';
 import { badRequest, conflict, notFound } from './errors.js';
+import { serializeArtifact } from './artifacts.js';
 import { serializeEdges, serializeJob, serializePipeline } from './serializers.js';
 import { openEventStream } from './stream.js';
 
@@ -92,6 +93,13 @@ export function createPipelineRouter(context: AppContext): Router {
     }
 
     response.json({ pipeline: serializePipeline(requirePipeline(context, pipeline.id)) });
+  });
+
+  router.get('/:id/artifacts', (request, response) => {
+    const pipeline = requirePipeline(context, request.params.id);
+    response.json({
+      artifacts: context.artifacts.listByPipeline(pipeline.id).map(serializeArtifact),
+    });
   });
 
   router.get('/:id/events', (request, response) => {
