@@ -4,6 +4,7 @@ import { loadConfig, type ServerConfig } from './config.js';
 import { openDatabase, type Db } from './db/connection.js';
 import { migrate } from './db/migrate.js';
 import { createLogger, type Logger } from './logger.js';
+import { ArtifactRepository } from './repositories/artifacts.js';
 import { JobRepository } from './repositories/jobs.js';
 import { LogRepository } from './repositories/logs.js';
 import { PipelineRepository } from './repositories/pipelines.js';
@@ -18,6 +19,7 @@ export interface AppContext {
   readonly pipelines: PipelineRepository;
   readonly jobs: JobRepository;
   readonly logs: LogRepository;
+  readonly artifacts: ArtifactRepository;
   readonly runners: RunnerRepository;
   readonly events: EventBus;
   readonly orchestrator: Orchestrator;
@@ -35,6 +37,7 @@ export function createContext(
   const pipelines = new PipelineRepository(db);
   const jobs = new JobRepository(db);
   const logs = new LogRepository(db);
+  const artifacts = new ArtifactRepository(db);
   const runners = new RunnerRepository(db);
   const events = new EventBus();
 
@@ -57,6 +60,7 @@ export function createContext(
     pipelines,
     jobs,
     logs,
+    artifacts,
     logger,
     events,
     executor: executorId,
@@ -70,6 +74,7 @@ export function createContext(
     pipelines,
     jobs,
     logs,
+    artifacts,
     runners,
     events,
     orchestrator,

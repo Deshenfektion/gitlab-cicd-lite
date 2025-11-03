@@ -79,4 +79,23 @@ export const MIGRATIONS: readonly Migration[] = [
       );
     `,
   },
+  {
+    id: 4,
+    name: 'artifacts',
+    sql: `
+      CREATE TABLE artifacts (
+        id TEXT PRIMARY KEY,
+        job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        path TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        UNIQUE (job_id, name)
+      );
+
+      CREATE INDEX idx_artifacts_job ON artifacts(job_id);
+      CREATE INDEX idx_artifacts_expiry ON artifacts(expires_at);
+    `,
+  },
 ];

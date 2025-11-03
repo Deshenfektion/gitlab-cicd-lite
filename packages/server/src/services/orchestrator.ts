@@ -7,6 +7,7 @@ import {
   type RunListener,
 } from '@cicd/core';
 import type { Logger } from '../logger.js';
+import type { ArtifactRepository } from '../repositories/artifacts.js';
 import type { JobRepository } from '../repositories/jobs.js';
 import type { LogRepository } from '../repositories/logs.js';
 import type { PipelineRepository } from '../repositories/pipelines.js';
@@ -16,6 +17,7 @@ export interface OrchestratorDeps {
   readonly pipelines: PipelineRepository;
   readonly jobs: JobRepository;
   readonly logs: LogRepository;
+  readonly artifacts: ArtifactRepository;
   readonly logger: Logger;
   readonly events: EventBus;
   readonly executor: JobExecutor;
@@ -101,7 +103,7 @@ export class Orchestrator {
   }
 
   private createListener(pipelineId: string): RunListener {
-    const { jobs, pipelines, logs, logger, events } = this.deps;
+    const { jobs, pipelines, logs, artifacts, logger, events } = this.deps;
 
     return {
       onJobLog: (name, attempt, line) => {
@@ -127,6 +129,21 @@ export class Orchestrator {
           stream: stored.stream,
           message: stored.message,
         });
+      },
+      onJobArtifact: (name, _attempt, artifact) => {
+        const job = jobs.findByName(pipelineId, name);
+        if (job === null) {
+          return;
+        }
+
+        artifacts.save({
+          jobId: job.id,
+          name: artifact.name,
+          path: artifact.path,
+          sizeBytes: artifact.sizeBytes,
+          expiresAt: artifact.expiresAt,
+        });
+        logger.debug({ pipelineId, job: name, artifact: artifact.name }, 'artifact stored');
       },
       onJobStarted: (name, attempt) => {
         jobs.markStarted(pipelineId, name, attempt);
