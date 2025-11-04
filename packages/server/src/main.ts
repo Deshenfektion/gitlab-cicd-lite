@@ -6,6 +6,8 @@ const config = loadConfig();
 const context = createContext(config);
 const app = createApp(context);
 
+context.artifactCleaner.start();
+
 const server = app.listen(config.port, config.host, () => {
   context.logger.info({ port: config.port, host: config.host }, 'server listening');
 });

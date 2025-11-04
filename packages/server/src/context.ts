@@ -1,5 +1,5 @@
 import type { JobExecutor } from '@cicd/core';
-import { createExecutor } from '@cicd/runner';
+import { FilesystemArtifactStore, createExecutor } from '@cicd/runner';
 import { loadConfig, type ServerConfig } from './config.js';
 import { openDatabase, type Db } from './db/connection.js';
 import { migrate } from './db/migrate.js';
@@ -9,6 +9,7 @@ import { JobRepository } from './repositories/jobs.js';
 import { LogRepository } from './repositories/logs.js';
 import { PipelineRepository } from './repositories/pipelines.js';
 import { RunnerRepository } from './repositories/runners.js';
+import { ArtifactCleaner } from './services/artifact-cleaner.js';
 import { EventBus } from './services/events.js';
 import { Orchestrator } from './services/orchestrator.js';
 
@@ -23,6 +24,7 @@ export interface AppContext {
   readonly runners: RunnerRepository;
   readonly events: EventBus;
   readonly orchestrator: Orchestrator;
+  readonly artifactCleaner: ArtifactCleaner;
   close(): void;
 }
 
@@ -67,6 +69,12 @@ export function createContext(
     concurrency: config.concurrency,
   });
 
+  const artifactCleaner = new ArtifactCleaner({
+    artifacts,
+    store: new FilesystemArtifactStore(config.artifactRoot),
+    logger,
+  });
+
   return {
     config,
     logger,
@@ -78,6 +86,10 @@ export function createContext(
     runners,
     events,
     orchestrator,
-    close: () => db.close(),
+    artifactCleaner,
+    close: () => {
+      artifactCleaner.stop();
+      db.close();
+    },
   };
 }
