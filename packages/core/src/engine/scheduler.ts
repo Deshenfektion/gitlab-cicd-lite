@@ -27,10 +27,22 @@ export class PipelineScheduler {
   private readonly states = new Map<string, JobState>();
   private readonly order: readonly string[];
 
-  constructor(private readonly graph: PipelineGraph) {
+  constructor(
+    private readonly graph: PipelineGraph,
+    initial: readonly JobSnapshot[] = [],
+  ) {
     this.order = topologicalOrder(graph);
     for (const name of this.order) {
       this.states.set(name, { status: 'pending', attempt: 0 });
+    }
+
+    for (const snapshot of initial) {
+      const state = this.states.get(snapshot.name);
+      if (state === undefined) {
+        continue;
+      }
+      state.status = snapshot.status;
+      state.attempt = snapshot.attempt;
     }
   }
 

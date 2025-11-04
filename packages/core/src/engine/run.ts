@@ -4,7 +4,7 @@ import type { PipelineGraph } from '../graph/dag.js';
 import { artifactSources } from '../graph/traverse.js';
 import type { CollectedArtifact, JobExecutor, LogLine } from './executor.js';
 import { failure, type JobOutcome } from './outcome.js';
-import { PipelineScheduler } from './scheduler.js';
+import { PipelineScheduler, type JobSnapshot } from './scheduler.js';
 
 export interface RunListener {
   onJobStarted?(name: string, attempt: number): void;
@@ -20,6 +20,7 @@ export interface RunOptions {
   readonly concurrency?: number;
   readonly listener?: RunListener;
   readonly delay?: (ms: number) => Promise<void>;
+  readonly initialState?: readonly JobSnapshot[];
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -46,7 +47,7 @@ export class PipelineRun {
     private readonly executor: JobExecutor,
     options: RunOptions = {},
   ) {
-    this.scheduler = new PipelineScheduler(graph);
+    this.scheduler = new PipelineScheduler(graph, options.initialState ?? []);
     this.pipelineId = options.pipelineId ?? 'local';
     this.concurrency = Math.max(1, options.concurrency ?? 4);
     this.listener = options.listener ?? {};

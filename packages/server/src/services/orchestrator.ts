@@ -2,6 +2,7 @@ import {
   PipelineRun,
   loadPipeline,
   type JobExecutor,
+  type JobSnapshot,
   type JobStatus,
   type PipelineStatus,
   type RunListener,
@@ -55,7 +56,7 @@ export class Orchestrator {
     return this.runs.size;
   }
 
-  start(pipelineId: string): Promise<PipelineStatus> {
+  start(pipelineId: string, initialState: readonly JobSnapshot[] = []): Promise<PipelineStatus> {
     const pipeline = this.deps.pipelines.findById(pipelineId);
     if (pipeline === null) {
       throw new PipelineNotFoundError(pipelineId);
@@ -69,6 +70,7 @@ export class Orchestrator {
       pipelineId,
       concurrency: this.deps.concurrency,
       listener: this.createListener(pipelineId),
+      initialState,
     });
 
     this.runs.set(pipelineId, run);

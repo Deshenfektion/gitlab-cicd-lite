@@ -290,3 +290,48 @@ jobs:
     expect(scheduler.status).toBe('success');
   });
 });
+
+describe('PipelineScheduler resumption', () => {
+  it('resumes from a persisted snapshot', () => {
+    const graph = loadPipeline(diamond).graph;
+    const scheduler = new PipelineScheduler(graph, [
+      { name: 'build', status: 'success', attempt: 1 },
+      { name: 'lint', status: 'success', attempt: 1 },
+      { name: 'unit', status: 'pending', attempt: 0 },
+      { name: 'deploy', status: 'pending', attempt: 0 },
+    ]);
+
+    expect(scheduler.ready()).toEqual(['unit']);
+    expect(scheduler.status).toBe('running');
+  });
+
+  it('does not re-run jobs that already succeeded', () => {
+    const graph = loadPipeline(diamond).graph;
+    const scheduler = new PipelineScheduler(graph, [
+      { name: 'build', status: 'success', attempt: 2 },
+    ]);
+
+    expect(scheduler.attemptOf('build')).toBe(2);
+    expect(scheduler.ready()).toEqual(['lint', 'unit']);
+  });
+
+  it('ignores snapshot entries for unknown jobs', () => {
+    const graph = loadPipeline(diamond).graph;
+    expect(
+      () => new PipelineScheduler(graph, [{ name: 'ghost', status: 'success', attempt: 1 }]),
+    ).not.toThrow();
+  });
+
+  it('reports a fully restored pipeline as finished', () => {
+    const graph = loadPipeline(diamond).graph;
+    const scheduler = new PipelineScheduler(graph, [
+      { name: 'build', status: 'success', attempt: 1 },
+      { name: 'lint', status: 'success', attempt: 1 },
+      { name: 'unit', status: 'success', attempt: 1 },
+      { name: 'deploy', status: 'failed', attempt: 1 },
+    ]);
+
+    expect(scheduler.finished).toBe(true);
+    expect(scheduler.status).toBe('failed');
+  });
+});
