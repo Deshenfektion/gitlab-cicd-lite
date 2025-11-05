@@ -19,3 +19,4 @@ export * from './repositories/runners.js';
 export * from './repositories/artifacts.js';
 export * from './api/artifacts.js';
 export * from './services/artifact-cleaner.js';
+export * from './services/retry.js';

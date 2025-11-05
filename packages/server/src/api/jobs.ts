@@ -1,8 +1,10 @@
+import type { JobSnapshot } from '@cicd/core';
 import { Router } from 'express';
 import type { AppContext } from '../context.js';
 import type { JobRecord } from '../repositories/types.js';
+import { JobNotRetryableError, planJobRetry } from '../services/retry.js';
 import { serializeArtifact } from './artifacts.js';
-import { notFound } from './errors.js';
+import { conflict, notFound } from './errors.js';
 import { serializeJob } from './serializers.js';
 import { openEventStream } from './stream.js';
 
@@ -33,6 +35,30 @@ export function createJobRouter(context: AppContext): Router {
       lines,
       nextCursor: lines.length === 0 ? after : (lines[lines.length - 1] as { seq: number }).seq,
     });
+  });
+
+  router.post('/:id/retry', (request, response) => {
+    const job = requireJob(context, request.params.id);
+    const pipeline = context.pipelines.findById(job.pipelineId);
+    if (pipeline === null) {
+      throw notFound(`pipeline ${job.pipelineId} not found`);
+    }
+    if (context.orchestrator.isRunning(pipeline.id)) {
+      throw conflict(`pipeline ${pipeline.id} is still running`);
+    }
+
+    let state: readonly JobSnapshot[];
+    try {
+      state = planJobRetry(context, pipeline, job.name);
+    } catch (error) {
+      if (error instanceof JobNotRetryableError) {
+        throw conflict(error.message);
+      }
+      throw error;
+    }
+
+    void context.orchestrator.start(pipeline.id, state);
+    response.status(202).json({ job: serializeJob(requireJob(context, job.id)) });
   });
 
   router.get('/:id/artifacts', (request, response) => {

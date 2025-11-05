@@ -1,7 +1,8 @@
-import { loadPipeline, topologicalLayers } from '@cicd/core';
+import { loadPipeline, topologicalLayers, type JobSnapshot } from '@cicd/core';
 import { Router, type Request } from 'express';
 import type { AppContext } from '../context.js';
 import { PipelineNotFoundError, PipelineNotStartableError } from '../services/orchestrator.js';
+import { NothingToRetryError, planPipelineRetry } from '../services/retry.js';
 import { badRequest, conflict, notFound } from './errors.js';
 import { serializeArtifact } from './artifacts.js';
 import { serializeEdges, serializeJob, serializePipeline } from './serializers.js';
@@ -93,6 +94,29 @@ export function createPipelineRouter(context: AppContext): Router {
     }
 
     response.json({ pipeline: serializePipeline(requirePipeline(context, pipeline.id)) });
+  });
+
+  router.post('/:id/retry', (request, response) => {
+    const pipeline = requirePipeline(context, request.params.id);
+
+    if (context.orchestrator.isRunning(pipeline.id)) {
+      throw conflict(`pipeline ${pipeline.id} is still running`);
+    }
+
+    let state: readonly JobSnapshot[];
+    try {
+      state = planPipelineRetry(context, pipeline);
+    } catch (error) {
+      if (error instanceof NothingToRetryError) {
+        throw conflict(error.message);
+      }
+      throw error;
+    }
+
+    void context.orchestrator.start(pipeline.id, state);
+    response
+      .status(202)
+      .json({ pipeline: serializePipeline(requirePipeline(context, pipeline.id)) });
   });
 
   router.get('/:id/artifacts', (request, response) => {
