@@ -25,6 +25,7 @@ export class FakeExecutor implements JobExecutor {
   readonly executions: ExecutionRecord[] = [];
   readonly restores: ArtifactRestoreRecord[] = [];
 
+  private readonly calls = new Map<string, number>();
   private concurrent = 0;
   private peak = 0;
 
@@ -58,7 +59,7 @@ export class FakeExecutor implements JobExecutor {
         });
       }
       await this.options.hold?.(context);
-      const result = this.resultFor(context.jobName, context.attempt);
+      const result = this.resultFor(context.jobName);
       if (result instanceof Error) {
         throw result;
       }
@@ -68,14 +69,17 @@ export class FakeExecutor implements JobExecutor {
     }
   }
 
-  private resultFor(jobName: string, attempt: number): ScriptedResult {
+  private resultFor(jobName: string): ScriptedResult {
+    const call = (this.calls.get(jobName) ?? 0) + 1;
+    this.calls.set(jobName, call);
+
     const configured = this.options.results?.[jobName];
     if (configured === undefined) {
       return success();
     }
     if (Array.isArray(configured)) {
       const list = configured as readonly ScriptedResult[];
-      return list[Math.min(attempt, list.length) - 1] ?? success();
+      return list[Math.min(call, list.length) - 1] ?? success();
     }
     return configured as ScriptedResult;
   }
