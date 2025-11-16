@@ -12,11 +12,14 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && npm run build --workspace @cicd/web",
     "clean": "tsc -b --clean",
     "test": "vitest run",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "dev": "npm run dev --workspace @cicd/server",
+    "dev:web": "npm run dev --workspace @cicd/web",
+    "typecheck": "tsc -b && npm run typecheck --workspace @cicd/web"
   },
   "devDependencies": {
     "@eslint/js": "~9.34.0",
@@ -28,6 +31,7 @@
     "tsx": "~4.20.3",
     "typescript": "~5.9.2",
     "typescript-eslint": "~8.41.0",
+    "vite": "~7.1.3",
     "vitest": "~3.2.4"
   }
 }
