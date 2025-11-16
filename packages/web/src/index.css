@@ -1,4 +1,38 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-surface: oklch(0.16 0.01 260);
+  --color-surface-raised: oklch(0.21 0.012 260);
+  --color-surface-sunken: oklch(0.12 0.01 260);
+  --color-border-subtle: oklch(0.3 0.014 260);
+  --color-text-primary: oklch(0.95 0.005 260);
+  --color-text-muted: oklch(0.72 0.012 260);
+
+  --color-status-pending: oklch(0.72 0.03 260);
+  --color-status-running: oklch(0.75 0.16 240);
+  --color-status-success: oklch(0.75 0.16 150);
+  --color-status-failed: oklch(0.68 0.19 25);
+  --color-status-canceled: oklch(0.7 0.05 60);
+  --color-status-skipped: oklch(0.6 0.02 260);
+}
+
+html {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+}
+
+code,
+pre {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
 }
