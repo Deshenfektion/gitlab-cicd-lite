@@ -70,4 +70,6 @@ export const api = {
     send(`/pipelines/${id}/artifacts`),
 
   listRunners: (): Promise<{ runners: readonly Runner[] }> => send('/runners'),
+
+  artifactDownloadUrl: (artifact: Artifact): string => artifact.downloadUrl,
 };

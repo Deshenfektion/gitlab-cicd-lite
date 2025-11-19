@@ -1,4 +1,5 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { PipelineDetailPage } from './pages/PipelineDetailPage.js';
 import { PipelineListPage } from './pages/PipelineListPage.js';
 
 const NAV = [
@@ -36,6 +37,7 @@ export function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/pipelines" replace />} />
           <Route path="/pipelines" element={<PipelineListPage />} />
+          <Route path="/pipelines/:id" element={<PipelineDetailPage />} />
         </Routes>
       </main>
     </div>
