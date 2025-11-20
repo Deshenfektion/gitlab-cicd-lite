@@ -2,6 +2,7 @@ import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { NewPipelinePage } from './pages/NewPipelinePage.js';
 import { PipelineDetailPage } from './pages/PipelineDetailPage.js';
 import { PipelineListPage } from './pages/PipelineListPage.js';
+import { RunnersPage } from './pages/RunnersPage.js';
 
 const NAV = [
   { to: '/pipelines', label: 'Pipelines' },
@@ -46,6 +47,7 @@ export function App() {
           <Route path="/pipelines" element={<PipelineListPage />} />
           <Route path="/pipelines/new" element={<NewPipelinePage />} />
           <Route path="/pipelines/:id" element={<PipelineDetailPage />} />
+          <Route path="/runners" element={<RunnersPage />} />
         </Routes>
       </main>
     </div>
