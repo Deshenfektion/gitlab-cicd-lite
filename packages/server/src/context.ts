@@ -49,6 +49,7 @@ export function createContext(
       kind: config.executor,
       workspaceRoot: config.workspaceRoot,
       artifactRoot: config.artifactRoot,
+      ...(config.dockerSocket === undefined ? {} : { dockerSocket: config.dockerSocket }),
     });
 
   runners.register({

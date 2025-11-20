@@ -8,6 +8,7 @@ export interface ServerConfig {
   readonly workspaceRoot: string;
   readonly artifactRoot: string;
   readonly executor: ExecutorKind;
+  readonly dockerSocket: string | undefined;
   readonly concurrency: number;
   readonly logLevel: string;
 }
@@ -37,6 +38,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     workspaceRoot: env.WORKSPACE_ROOT ?? resolve(dataDir, 'workspaces'),
     artifactRoot: env.ARTIFACT_ROOT ?? resolve(dataDir, 'artifacts'),
     executor: readExecutor(env.EXECUTOR),
+    dockerSocket: env.DOCKER_SOCKET,
     concurrency: readInt(env.CONCURRENCY, 4),
     logLevel: env.LOG_LEVEL ?? 'info',
   };
