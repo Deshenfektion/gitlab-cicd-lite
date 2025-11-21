@@ -1,0 +1,20 @@
+{
+  "name": "@cicd/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Run and validate pipelines from the command line",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "cicd": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cicd/core": "*",
+    "@cicd/runner": "*"
+  }
+}

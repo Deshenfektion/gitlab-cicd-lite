@@ -10,6 +10,7 @@ export default defineConfig({
       '@cicd/core': resolvePackage('core'),
       '@cicd/runner': resolvePackage('runner'),
       '@cicd/server': resolvePackage('server'),
+      '@cicd/cli': resolvePackage('cli'),
     },
   },
   test: {
