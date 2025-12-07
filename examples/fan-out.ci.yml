@@ -1,0 +1,44 @@
+stages:
+  - prepare
+  - check
+  - report
+
+jobs:
+  prepare:
+    stage: prepare
+    image: alpine:3.20
+    script:
+      - mkdir -p reports
+      - echo "shared input" > reports/input.txt
+    artifacts:
+      paths:
+        - reports
+
+  check-a:
+    stage: check
+    image: alpine:3.20
+    needs: [prepare]
+    script:
+      - cat reports/input.txt
+      - echo "a ok" > reports/a.txt
+    artifacts:
+      paths:
+        - reports/a.txt
+
+  check-b:
+    stage: check
+    image: alpine:3.20
+    needs: [prepare]
+    script:
+      - cat reports/input.txt
+      - echo "b ok" > reports/b.txt
+    artifacts:
+      paths:
+        - reports/b.txt
+
+  report:
+    stage: report
+    image: alpine:3.20
+    needs: [check-a, check-b]
+    script:
+      - cat reports/a.txt reports/b.txt

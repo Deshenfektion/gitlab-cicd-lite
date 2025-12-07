@@ -1,0 +1,54 @@
+stages:
+  - install
+  - build
+  - test
+  - deploy
+
+default:
+  image: node:22-alpine
+  timeout: 15m
+
+jobs:
+  install:
+    stage: install
+    script:
+      - npm ci
+    artifacts:
+      name: node-modules
+      paths:
+        - node_modules
+      expire_in: 1d
+
+  compile:
+    stage: build
+    needs: [install]
+    script:
+      - npm run build
+    artifacts:
+      name: dist
+      paths:
+        - dist
+      expire_in: 7d
+
+  unit:
+    stage: test
+    needs: [compile]
+    retry:
+      max: 2
+      when: [runner_failure, timeout]
+    script:
+      - npm run test
+
+  lint:
+    stage: test
+    needs: [install]
+    allow_failure: true
+    script:
+      - npm run lint
+
+  deploy:
+    stage: deploy
+    needs: [unit, compile]
+    timeout: 5m
+    script:
+      - echo "deploying $(ls dist | wc -l) files"
