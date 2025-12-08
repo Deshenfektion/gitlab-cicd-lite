@@ -1,0 +1,14 @@
+services:
+  server:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      DATA_DIR: ${PWD}/data
+      EXECUTOR: docker
+      CONCURRENCY: '4'
+      LOG_LEVEL: info
+    volumes:
+      - ${PWD}/data:${PWD}/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
