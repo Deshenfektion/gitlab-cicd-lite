@@ -1,4 +1,6 @@
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { isExecutorKind, type ExecutorKind } from '@cicd/runner';
 
 export interface ServerConfig {
@@ -11,6 +13,7 @@ export interface ServerConfig {
   readonly dockerSocket: string | undefined;
   readonly concurrency: number;
   readonly logLevel: string;
+  readonly webRoot: string | undefined;
 }
 
 function readInt(value: string | undefined, fallback: number): number {
@@ -28,6 +31,11 @@ function readExecutor(value: string | undefined): ExecutorKind {
   return 'docker';
 }
 
+function defaultWebRoot(): string | undefined {
+  const candidate = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../web/dist');
+  return existsSync(candidate) ? candidate : undefined;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const dataDir = resolve(env.DATA_DIR ?? './data');
 
@@ -41,5 +49,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     dockerSocket: env.DOCKER_SOCKET,
     concurrency: readInt(env.CONCURRENCY, 4),
     logLevel: env.LOG_LEVEL ?? 'info',
+    webRoot: env.WEB_ROOT ?? defaultWebRoot(),
   };
 }

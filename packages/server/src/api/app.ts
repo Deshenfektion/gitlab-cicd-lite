@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import type { AppContext } from '../context.js';
@@ -23,7 +25,21 @@ export function createApp(context: AppContext): Express {
   app.use('/api/runners', createRunnerRouter(context));
   app.use('/api/artifacts', createArtifactRouter(context));
 
+  serveWebUi(app, context.config.webRoot);
+
   app.use(errorHandler);
 
   return app;
+}
+
+function serveWebUi(app: Express, webRoot: string | undefined): void {
+  if (webRoot === undefined || !existsSync(join(webRoot, 'index.html'))) {
+    return;
+  }
+
+  app.use(express.static(webRoot, { index: false }));
+
+  app.get(/^(?!\/api\/).*/, (_request, response) => {
+    response.sendFile(join(webRoot, 'index.html'));
+  });
 }
