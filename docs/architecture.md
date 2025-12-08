@@ -2,9 +2,9 @@
 
 ## Packages
 
-| Package        | Responsibility                                                       |
-| -------------- | -------------------------------------------------------------------- |
-| `@cicd/core`   | Configuration, dependency graph, scheduling. No I/O, no dependencies on the outside world. |
+| Package      | Responsibility                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------ |
+| `@cicd/core` | Configuration, dependency graph, scheduling. No I/O, no dependencies on the outside world. |
 
 More packages will be added as the runner and the server take shape.
 
@@ -34,7 +34,7 @@ There are two ways a job can gain a dependency:
   depends on every job in the closest preceding stage that actually contains
   jobs.
 
-Linking only to the *closest* populated stage rather than to every earlier stage
+Linking only to the _closest_ populated stage rather than to every earlier stage
 keeps the edge count low without changing the semantics: the dependency is
 transitive anyway. Empty stages are skipped rather than blocking the pipeline.
 

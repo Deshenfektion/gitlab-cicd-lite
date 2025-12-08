@@ -35,27 +35,27 @@ jobs:
 
 ## Top level keys
 
-| Key       | Type              | Default                     | Description                              |
-| --------- | ----------------- | --------------------------- | ---------------------------------------- |
-| `stages`  | list of strings   | `[build, test, deploy]`     | Declares the stage order.                |
-| `default` | map               | `{}`                        | Values inherited by every job.           |
-| `jobs`    | map of job name → job | required                | The jobs that make up the pipeline.      |
+| Key       | Type                  | Default                 | Description                         |
+| --------- | --------------------- | ----------------------- | ----------------------------------- |
+| `stages`  | list of strings       | `[build, test, deploy]` | Declares the stage order.           |
+| `default` | map                   | `{}`                    | Values inherited by every job.      |
+| `jobs`    | map of job name → job | required                | The jobs that make up the pipeline. |
 
 Unknown keys are rejected rather than ignored, so a typo such as `neds:` fails
 validation instead of silently changing the meaning of a pipeline.
 
 ## Job keys
 
-| Key         | Type                     | Default                        | Description                                     |
-| ----------- | ------------------------ | ------------------------------ | ----------------------------------------------- |
-| `script`    | string or list of strings | required                      | Commands executed in order inside the container. |
-| `stage`     | string                    | `test`, else the first stage  | The stage this job belongs to.                   |
-| `image`     | string                    | `default.image` or `alpine:3.20` | Container image used to run the job.          |
-| `needs`     | string or list of strings | `[]`                          | Explicit job dependencies.                       |
-| `artifacts` | map                       | none                          | Files to keep after the job succeeds.            |
-| `retry`     | int or map                | `0`                           | How often a failed job is retried.               |
-| `timeout`   | duration                  | `default.timeout` or `1h`     | Wall clock limit for a single attempt.           |
-| `allow_failure` | boolean               | `false`                       | Let the pipeline continue when this job fails.   |
+| Key             | Type                      | Default                          | Description                                      |
+| --------------- | ------------------------- | -------------------------------- | ------------------------------------------------ |
+| `script`        | string or list of strings | required                         | Commands executed in order inside the container. |
+| `stage`         | string                    | `test`, else the first stage     | The stage this job belongs to.                   |
+| `image`         | string                    | `default.image` or `alpine:3.20` | Container image used to run the job.             |
+| `needs`         | string or list of strings | `[]`                             | Explicit job dependencies.                       |
+| `artifacts`     | map                       | none                             | Files to keep after the job succeeds.            |
+| `retry`         | int or map                | `0`                              | How often a failed job is retried.               |
+| `timeout`       | duration                  | `default.timeout` or `1h`        | Wall clock limit for a single attempt.           |
+| `allow_failure` | boolean                   | `false`                          | Let the pipeline continue when this job fails.   |
 
 ## Durations
 
