@@ -1,9 +1,12 @@
 import { createApp } from './api/app.js';
 import { loadConfig } from './config.js';
 import { createContext } from './context.js';
+import { recoverInterruptedRuns } from './services/recovery.js';
 
 const config = loadConfig();
 const context = createContext(config);
+
+recoverInterruptedRuns(context.db, context.logger);
 const app = createApp(context);
 
 context.artifactCleaner.start();
