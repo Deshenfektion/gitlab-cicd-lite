@@ -105,17 +105,18 @@ export class Orchestrator {
   }
 
   private createListener(pipelineId: string): RunListener {
-    const { jobs, pipelines, logs, artifacts, logger, events } = this.deps;
+    const { pipelines, logs, artifacts, logger, events } = this.deps;
+    const jobIds = this.jobIdIndex(pipelineId);
 
     return {
       onJobLog: (name, attempt, line) => {
-        const job = jobs.findByName(pipelineId, name);
-        if (job === null) {
+        const jobId = jobIds.get(name);
+        if (jobId === undefined) {
           return;
         }
 
         const stored = logs.append({
-          jobId: job.id,
+          jobId,
           attempt,
           stream: line.stream,
           message: line.text,
@@ -124,7 +125,7 @@ export class Orchestrator {
         events.publish({
           type: 'job.log',
           pipelineId,
-          jobId: job.id,
+          jobId,
           jobName: name,
           attempt,
           seq: stored.seq,
@@ -133,13 +134,13 @@ export class Orchestrator {
         });
       },
       onJobArtifact: (name, _attempt, artifact) => {
-        const job = jobs.findByName(pipelineId, name);
-        if (job === null) {
+        const jobId = jobIds.get(name);
+        if (jobId === undefined) {
           return;
         }
 
         artifacts.save({
-          jobId: job.id,
+          jobId,
           name: artifact.name,
           path: artifact.path,
           sizeBytes: artifact.sizeBytes,
@@ -148,12 +149,12 @@ export class Orchestrator {
         logger.debug({ pipelineId, job: name, artifact: artifact.name }, 'artifact stored');
       },
       onJobStarted: (name, attempt) => {
-        jobs.markStarted(pipelineId, name, attempt);
+        this.deps.jobs.markStarted(pipelineId, name, attempt);
         this.publishJobStatus(pipelineId, name, 'running', attempt);
         logger.debug({ pipelineId, job: name, attempt }, 'job started');
       },
       onJobFinished: (name, attempt, outcome, status) => {
-        jobs.markFinished(pipelineId, name, {
+        this.deps.jobs.markFinished(pipelineId, name, {
           status,
           exitCode: outcome.exitCode,
           failureReason: outcome.kind === 'failure' ? outcome.reason : null,
@@ -163,7 +164,7 @@ export class Orchestrator {
         logger.debug({ pipelineId, job: name, attempt, status }, 'job finished');
       },
       onJobStatusChanged: (name, status) => {
-        jobs.setStatus(pipelineId, name, status);
+        this.deps.jobs.setStatus(pipelineId, name, status);
         this.publishJobStatus(pipelineId, name, status);
       },
       onStatusChanged: (status) => {
@@ -172,6 +173,10 @@ export class Orchestrator {
         logger.info({ pipelineId, status }, 'pipeline status changed');
       },
     };
+  }
+
+  private jobIdIndex(pipelineId: string): ReadonlyMap<string, string> {
+    return new Map(this.deps.pipelines.jobsOf(pipelineId).map((job) => [job.name, job.id]));
   }
 
   private publishJobStatus(
