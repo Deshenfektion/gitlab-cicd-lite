@@ -2,11 +2,24 @@
 
 ## Packages
 
-| Package      | Responsibility                                                                             |
-| ------------ | ------------------------------------------------------------------------------------------ |
-| `@cicd/core` | Configuration, dependency graph, scheduling. No I/O, no dependencies on the outside world. |
+| Package        | Responsibility                                                                      |
+| -------------- | ----------------------------------------------------------------------------------- |
+| `@cicd/core`   | Configuration, dependency graph, state machine, scheduler, run loop. No I/O at all. |
+| `@cicd/runner` | Executors, workspaces, artifact storage, Docker plumbing.                           |
+| `@cicd/server` | REST API, persistence, orchestration, event bus.                                    |
+| `@cicd/web`    | React interface.                                                                    |
+| `@cicd/cli`    | Command line entry point.                                                           |
 
-More packages will be added as the runner and the server take shape.
+Dependencies point in one direction only:
+
+```
+web ──► server ──► runner ──► core
+ cli ──────────────┘  │          ▲
+                      └──────────┘
+```
+
+`core` defines the interfaces that the outer layers implement. Nothing in `core`
+imports `node:fs`, `dockerode`, `express` or `better-sqlite3`.
 
 ## From YAML to a graph
 
@@ -50,8 +63,125 @@ concurrently. The layering is used by the UI to draw the graph; the scheduler
 does not need it, because it can start any job whose dependencies are complete
 without waiting for a whole layer to finish.
 
-## Errors
+## The state machine
 
-`ConfigError` carries a list of `{ path, message }` issues rather than a single
-string. Validation collects everything it can find in one pass so that a user
-fixing their configuration sees all problems at once instead of one per run.
+Job statuses and the only transitions the engine permits:
+
+```
+          ┌──────────────► skipped ──┐
+          │                          │
+       pending ──► running ──► success
+          │  ▲        │
+          │  │        ├──────► failed ──┐
+          ▼  │        │                 │
+      canceled ◄──────┘                 │
+          │                             │
+          └───────── retry ─────────────┘  (failed / canceled / skipped → pending)
+```
+
+Every change goes through `assertTransition`, so an impossible sequence throws
+instead of silently corrupting state. `skipped → pending` exists because
+retrying an upstream job has to make its skipped descendants runnable again.
+
+The pipeline status is derived, never stored independently: all pending is
+`pending`, anything unfinished is `running`, otherwise `failed` beats `canceled`
+beats `success`. A `failed` job with `allow_failure: true` is counted as a
+success for this purpose and for unblocking its dependents.
+
+## Scheduling versus execution
+
+`PipelineScheduler` is deliberately synchronous and free of side effects:
+
+- `ready()` — pending jobs whose dependencies have all effectively succeeded.
+- `start(name)` — marks a job running and returns its attempt number.
+- `complete(name, outcome)` — records the result, consults the retry policy, and
+  either requeues the job or marks the downstream closure `skipped`.
+- `cancel()` — moves every unfinished job to `canceled` and reports which ones
+  were actually running.
+
+`PipelineRun` wraps it with everything asynchronous: a concurrency limit, abort
+signals, per-attempt timeouts, retry backoff, and a listener that reports
+lifecycle events outward. Because the scheduler is pure, nearly every rule about
+ordering, skipping and retrying can be tested without timers or processes.
+
+The run loop is event driven rather than poll driven. It launches everything
+that is ready, then parks on a promise that is resolved whenever a job finishes
+or a retry delay expires. A `signaled` flag guards against the wake-up that
+arrives between launching and parking.
+
+## Executors
+
+```ts
+interface JobExecutor {
+  readonly id: string;
+  run(context: JobContext): Promise<JobOutcome>;
+}
+```
+
+`JobContext` carries the job definition, the attempt number, the dependencies
+that publish artifacts, an `AbortSignal`, and callbacks for log lines and
+collected artifacts. Two implementations exist:
+
+- **`DockerExecutor`** — creates a container from the job's image with the
+  workspace bind-mounted at `/workspace`, attaches to the multiplexed output
+  stream, waits for the exit code and always removes the container. It talks to
+  a narrow `DockerClient` interface rather than to `dockerode` directly, which
+  is what makes it testable without a daemon.
+- **`ShellExecutor`** — runs the script through `/bin/sh` in a detached process
+  group so that aborting kills the whole tree, not just the shell.
+
+Both build the same script: `set -e`, then each command echoed and executed, so
+the log shows what ran.
+
+## Artifacts
+
+The artifact path is deliberately boring, because that is where correctness
+matters more than cleverness:
+
+1. Before a job starts, its workspace is recreated from scratch.
+2. For each dependency that declares `artifacts`, the stored `tar.gz` is
+   extracted into that workspace.
+3. The script runs.
+4. On success, the declared paths that actually exist are archived to
+   `<artifactRoot>/<pipelineId>/<jobName>.tar.gz`, and the executor reports the
+   archive through `onArtifact`.
+
+The engine never reads or writes a file; it only forwards the metadata to the
+listener, which stores a row. A sweeper deletes archives and rows once
+`expires_at` has passed.
+
+## Persistence
+
+SQLite through `better-sqlite3`, opened with WAL, `foreign_keys = ON` and a busy
+timeout. Migrations are an ordered list of SQL strings applied inside a
+transaction and recorded in `schema_migrations`.
+
+| Table              | Purpose                                                        |
+| ------------------ | -------------------------------------------------------------- |
+| `pipelines`        | One row per run, including the original configuration text.    |
+| `jobs`             | Status, attempt, timing, exit code and failure detail.         |
+| `job_dependencies` | Resolved edges, so the graph can be read back without parsing. |
+| `job_logs`         | Append-only output, keyed by job and attempt.                  |
+| `artifacts`        | Archive metadata and expiry.                                   |
+| `runners`          | Registered executors and their concurrency.                    |
+
+The configuration text is kept on the pipeline row so that a retry replays
+exactly the definition the run started with, even if the source file changed.
+
+Everything cascades from `pipelines`, so deleting a pipeline cleans up its jobs,
+edges, logs and artifact rows in one statement.
+
+## Orchestration
+
+`Orchestrator` is the only place where the engine, the database and the runner
+meet. It loads the stored configuration, builds a `PipelineRun`, and translates
+listener callbacks into repository writes and event-bus publications. It also
+holds the set of active runs so that a cancellation can reach the right one.
+
+A retry does not create a new pipeline: `planJobRetry` and `planPipelineRetry`
+reset the affected jobs to `pending`, then hand the current job statuses to a
+new `PipelineRun` as its initial state. The scheduler resumes from there, so
+jobs that already succeeded are never executed twice.
+
+Because the active-run map lives in memory, the server marks any pipeline still
+`running` at startup as `canceled` — it cannot have survived the restart.
