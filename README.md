@@ -87,8 +87,9 @@ Docker, HTTP or SQLite. It defines the ports (`JobExecutor`, `RunListener`) and
 everything else plugs into them. That is what makes the engine testable without
 a container runtime and the runner testable without a Docker daemon.
 
-See [docs/architecture.md](docs/architecture.md) for the details and
-[docs/configuration.md](docs/configuration.md) for the configuration reference.
+See [docs/architecture.md](docs/architecture.md) for the details,
+[docs/configuration.md](docs/configuration.md) for the configuration reference
+and [docs/api.md](docs/api.md) for the HTTP API.
 
 ## Design decisions
 
