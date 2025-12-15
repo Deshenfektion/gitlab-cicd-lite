@@ -1,4 +1,4 @@
-import { loadPipeline, topologicalLayers, type JobSnapshot } from '@cicd/core';
+import { layersFromEdges, loadPipeline, type JobSnapshot } from '@cicd/core';
 import { Router, type Request } from 'express';
 import type { AppContext } from '../context.js';
 import { PipelineNotFoundError, PipelineNotStartableError } from '../services/orchestrator.js';
@@ -58,13 +58,15 @@ export function createPipelineRouter(context: AppContext): Router {
 
     const jobs = context.pipelines.jobsOf(pipeline.id);
     const edges = context.pipelines.edgesOf(pipeline.id);
-    const { graph } = loadPipeline(pipeline.config);
 
     response.json({
       pipeline: serializePipeline(pipeline),
       jobs: jobs.map(serializeJob),
       edges: serializeEdges(edges),
-      layers: topologicalLayers(graph),
+      layers: layersFromEdges(
+        jobs.map((job) => job.name),
+        edges,
+      ),
     });
   });
 

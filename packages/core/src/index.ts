@@ -9,6 +9,7 @@ export * from './graph/dag.js';
 export * from './graph/stages.js';
 export * from './graph/cycles.js';
 export * from './graph/topology.js';
+export * from './graph/layers.js';
 export * from './graph/validate.js';
 export * from './graph/traverse.js';
 export * from './state/transitions.js';
