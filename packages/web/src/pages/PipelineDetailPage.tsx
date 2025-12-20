@@ -10,7 +10,7 @@ import { formatDuration, formatTimestamp } from '../format.js';
 import { usePolledResource } from '../hooks/usePolledResource.js';
 
 const ACTIVE_POLL_MS = 1500;
-const IDLE_POLL_MS = 8000;
+const IDLE_POLL_MS = 15000;
 
 export function PipelineDetailPage() {
   const { id = '' } = useParams();
@@ -20,12 +20,18 @@ export function PipelineDetailPage() {
   const [pending, setPending] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const [interval, setInterval_] = useState(ACTIVE_POLL_MS);
+
   const load = useCallback(() => api.getPipeline(id), [id]);
-  const detail = usePolledResource(`pipeline:${id}`, load, ACTIVE_POLL_MS);
+  const detail = usePolledResource(`pipeline:${id}`, load, interval);
 
   const pipeline = detail.data?.pipeline ?? null;
   const jobs = detail.data?.jobs ?? [];
   const active = pipeline?.status === 'running' || pipeline?.status === 'pending';
+
+  useEffect(() => {
+    setInterval_(active ? ACTIVE_POLL_MS : IDLE_POLL_MS);
+  }, [active]);
 
   const selectedJob = jobs.find((job) => job.id === selectedJobId) ?? jobs[0] ?? null;
   const selectedName = selectedJob?.name ?? null;
@@ -57,7 +63,13 @@ export function PipelineDetailPage() {
 
     void load().catch(() => undefined);
 
-    const timer = setInterval(() => void load().catch(() => undefined), IDLE_POLL_MS / 4);
+    if (selectedJob.status !== 'running') {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const timer = setInterval(() => void load().catch(() => undefined), ACTIVE_POLL_MS);
     return () => {
       cancelled = true;
       clearInterval(timer);
