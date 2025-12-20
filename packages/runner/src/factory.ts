@@ -1,6 +1,7 @@
 import type { JobExecutor } from '@cicd/core';
 import { ArtifactCoordinator } from './artifacts/coordinator.js';
 import { FilesystemArtifactStore } from './artifacts/filesystem-store.js';
+import type { DockerClient } from './docker/client.js';
 import { DockerodeClient } from './docker/dockerode-client.js';
 import { DockerExecutor } from './executors/docker.js';
 import { ShellExecutor } from './executors/shell.js';
@@ -21,6 +22,15 @@ export function isExecutorKind(value: string): value is ExecutorKind {
   return (EXECUTOR_KINDS as readonly string[]).includes(value);
 }
 
+export function createDockerClient(config: ExecutorConfig): DockerClient | null {
+  if (config.kind !== 'docker') {
+    return null;
+  }
+  return config.dockerSocket === undefined
+    ? new DockerodeClient()
+    : new DockerodeClient({ socketPath: config.dockerSocket });
+}
+
 export function createExecutor(config: ExecutorConfig): JobExecutor {
   const workspaces = new WorkspaceManager(config.workspaceRoot);
   const artifacts = new ArtifactCoordinator(new FilesystemArtifactStore(config.artifactRoot));
@@ -29,10 +39,9 @@ export function createExecutor(config: ExecutorConfig): JobExecutor {
     return new ShellExecutor({ workspaces, artifacts });
   }
 
-  const client =
-    config.dockerSocket === undefined
-      ? new DockerodeClient()
-      : new DockerodeClient({ socketPath: config.dockerSocket });
-
-  return new DockerExecutor({ client, workspaces, artifacts });
+  return new DockerExecutor({
+    client: createDockerClient(config) as DockerClient,
+    workspaces,
+    artifacts,
+  });
 }

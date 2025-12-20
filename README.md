@@ -55,9 +55,9 @@ implemented here rather than delegated to a library.
   (`script_failure`, `runner_failure`, `timeout`) with exponential backoff.
 - **Failure propagation** — the downstream closure of a failed job is marked
   `skipped`; `allow_failure` jobs are tolerated once their retries are spent.
-- **Cancellation** — cancelling aborts running containers and cancels queued
-  jobs; a server restart marks interrupted runs as cancelled instead of leaving
-  them stuck.
+- **Cancellation and recovery** — cancelling aborts running containers and
+  cancels queued jobs. After a crash the server marks interrupted runs as
+  cancelled and removes the job containers they left behind, found by label.
 - **Docker runner** — pulls images, creates containers, demultiplexes the Docker
   stream into stdout/stderr, collects exit codes and always cleans up. A shell
   executor exists for development and tests.
@@ -248,6 +248,9 @@ This is a learning project, and it stops well short of a production CI system:
   network and a bind-mounted workspace; a malicious pipeline is not contained.
   Mounting the Docker socket also means the server is effectively root on the
   host.
+- **The shell executor can orphan processes.** Containers left by a crash are
+  reaped by label on startup, but a killed server cannot reclaim the shell
+  executor's detached process groups.
 - **No log rotation.** Logs are rows in SQLite; a very chatty job will grow the
   database.
 - **Artifacts are local files.** No object storage, no deduplication, and the

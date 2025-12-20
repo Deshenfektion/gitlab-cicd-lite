@@ -1,5 +1,10 @@
 import { PassThrough, type Readable } from 'node:stream';
-import type { ContainerHandle, CreateContainerSpec, DockerClient } from './client.js';
+import type {
+  ContainerHandle,
+  CreateContainerSpec,
+  DockerClient,
+  ManagedContainer,
+} from './client.js';
 import { encodeDockerFrame, type DockerStreamType } from './demultiplex.js';
 
 export interface FakeContainerScript {
@@ -12,6 +17,7 @@ export interface FakeDockerClientOptions {
   readonly images?: readonly string[];
   readonly script?: FakeContainerScript;
   readonly failOnCreate?: Error;
+  readonly orphans?: readonly ManagedContainer[];
 }
 
 export class FakeDockerClient implements DockerClient {
@@ -37,6 +43,14 @@ export class FakeDockerClient implements DockerClient {
     this.pulled.push(image);
     onProgress(`Pulling from ${image}`);
     this.images.add(image);
+  }
+
+  async listManaged(labelKey: string): Promise<readonly ManagedContainer[]> {
+    return (this.options.orphans ?? []).filter((container) => labelKey in container.labels);
+  }
+
+  async removeContainer(id: string): Promise<void> {
+    this.removed.push(id);
   }
 
   async createContainer(spec: CreateContainerSpec): Promise<ContainerHandle> {

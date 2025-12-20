@@ -2,11 +2,13 @@ import { createApp } from './api/app.js';
 import { loadConfig } from './config.js';
 import { createContext } from './context.js';
 import { recoverInterruptedRuns } from './services/recovery.js';
+import { reapOrphanedJobContainers } from './services/reaper.js';
 
 const config = loadConfig();
 const context = createContext(config);
 
 recoverInterruptedRuns(context.db, context.logger);
+void reapOrphanedJobContainers(context);
 const app = createApp(context);
 
 context.artifactCleaner.start();

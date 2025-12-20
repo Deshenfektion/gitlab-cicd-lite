@@ -21,3 +21,4 @@ export * from './api/artifacts.js';
 export * from './services/artifact-cleaner.js';
 export * from './services/retry.js';
 export * from './services/recovery.js';
+export * from './services/reaper.js';

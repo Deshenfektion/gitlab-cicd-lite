@@ -18,9 +18,16 @@ export interface CreateContainerSpec {
   readonly labels: Readonly<Record<string, string>>;
 }
 
+export interface ManagedContainer {
+  readonly id: string;
+  readonly labels: Readonly<Record<string, string>>;
+}
+
 export interface DockerClient {
   ping(): Promise<void>;
   hasImage(image: string): Promise<boolean>;
   pullImage(image: string, onProgress: (message: string) => void): Promise<void>;
   createContainer(spec: CreateContainerSpec): Promise<ContainerHandle>;
+  listManaged(labelKey: string): Promise<readonly ManagedContainer[]>;
+  removeContainer(id: string): Promise<void>;
 }

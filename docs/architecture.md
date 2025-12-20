@@ -185,3 +185,9 @@ jobs that already succeeded are never executed twice.
 
 Because the active-run map lives in memory, the server marks any pipeline still
 `running` at startup as `canceled` — it cannot have survived the restart.
+
+A crash also leaves the job's container behind, still running. Every container
+is created with a `cicd.pipeline` label, so on startup the server lists
+containers carrying that label and removes them. The shell executor has no
+equivalent handle on its processes, so an ungraceful shutdown can orphan them;
+that is one more reason the Docker executor is the default.

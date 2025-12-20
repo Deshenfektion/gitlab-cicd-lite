@@ -1,6 +1,11 @@
 import type { Readable } from 'node:stream';
 import Docker from 'dockerode';
-import type { ContainerHandle, CreateContainerSpec, DockerClient } from './client.js';
+import type {
+  ContainerHandle,
+  CreateContainerSpec,
+  DockerClient,
+  ManagedContainer,
+} from './client.js';
 
 interface PullProgress {
   status?: string;
@@ -41,6 +46,22 @@ export class DockerodeClient implements DockerClient {
         },
       );
     });
+  }
+
+  async listManaged(labelKey: string): Promise<readonly ManagedContainer[]> {
+    const containers = await this.docker.listContainers({
+      all: true,
+      filters: { label: [labelKey] },
+    });
+
+    return containers.map((container) => ({
+      id: container.Id,
+      labels: container.Labels ?? {},
+    }));
+  }
+
+  async removeContainer(id: string): Promise<void> {
+    await this.docker.getContainer(id).remove({ force: true, v: true });
   }
 
   async createContainer(spec: CreateContainerSpec): Promise<ContainerHandle> {
