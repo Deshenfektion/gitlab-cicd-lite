@@ -189,6 +189,30 @@ node packages/cli/dist/main.js run examples/fan-out.ci.yml --executor shell --ve
 ✓ pipeline success in 0s
 ```
 
+## Repository layout
+
+```
+packages/
+  core/     config → graph → scheduler → run loop   (no I/O)
+    config/   parsing, schema, normalization, durations
+    graph/    dag, cycles, stages, topology, layers, traversal
+    state/    transitions, pipeline status derivation
+    engine/   scheduler, retry policy, run loop, executor port
+  runner/   executors and everything that touches the machine
+    docker/   client interface, dockerode adapter, stream demultiplexer
+    executors/  docker and shell
+    artifacts/  store, tar archiving, restore/collect coordinator
+  server/   http and persistence
+    db/         connection, migrations
+    repositories/  pipelines, jobs, logs, artifacts, runners
+    services/   orchestrator, retry planning, events, cleanup, recovery
+    api/        routers, serializers, sse
+  web/      react interface
+  cli/      command line entry point
+docs/       architecture, configuration and api reference
+examples/   sample pipeline configurations
+```
+
 ## Testing
 
 ```bash
