@@ -47,7 +47,13 @@ export class PipelineScheduler {
   }
 
   get status(): PipelineStatus {
-    return derivePipelineStatus(this.order.map((name) => this.effectiveStatusOf(name)));
+    const derived = derivePipelineStatus(this.order.map((name) => this.effectiveStatusOf(name)));
+
+    if (derived === 'pending' && this.order.some((name) => this.stateOf(name).attempt > 0)) {
+      return 'running';
+    }
+
+    return derived;
   }
 
   get finished(): boolean {

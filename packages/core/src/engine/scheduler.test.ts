@@ -335,3 +335,42 @@ describe('PipelineScheduler resumption', () => {
     expect(scheduler.status).toBe('failed');
   });
 });
+
+describe('PipelineScheduler status during retries', () => {
+  const single = 'jobs:\n  flaky:\n    script: echo\n    retry: 2\n';
+
+  it('reports running while a job waits for its retry', () => {
+    const scheduler = schedulerFor(single);
+    expect(scheduler.status).toBe('pending');
+
+    scheduler.start('flaky');
+    scheduler.complete('flaky', failure('script_failure', 1));
+
+    expect(scheduler.statusOf('flaky')).toBe('pending');
+    expect(scheduler.status).toBe('running');
+  });
+
+  it('still reports pending before anything has been attempted', () => {
+    const scheduler = schedulerFor(diamond);
+    expect(scheduler.status).toBe('pending');
+  });
+
+  it('reports running when a resumed pipeline has attempts behind it', () => {
+    const graph = loadPipeline(diamond).graph;
+    const scheduler = new PipelineScheduler(graph, [
+      { name: 'build', status: 'pending', attempt: 1 },
+    ]);
+
+    expect(scheduler.status).toBe('running');
+  });
+
+  it('reports pending for a retry that reset every attempt counter', () => {
+    const graph = loadPipeline(diamond).graph;
+    const scheduler = new PipelineScheduler(graph, [
+      { name: 'build', status: 'pending', attempt: 0 },
+      { name: 'lint', status: 'pending', attempt: 0 },
+    ]);
+
+    expect(scheduler.status).toBe('pending');
+  });
+});
