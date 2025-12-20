@@ -17,6 +17,17 @@ export const badRequest = (message: string, details?: unknown): HttpError =>
   new HttpError(400, message, details);
 export const conflict = (message: string): HttpError => new HttpError(409, message);
 
+function clientErrorStatus(error: unknown): number | null {
+  if (typeof error !== 'object' || error === null) {
+    return null;
+  }
+
+  const candidate = error as { status?: unknown; statusCode?: unknown };
+  const status = typeof candidate.status === 'number' ? candidate.status : candidate.statusCode;
+
+  return typeof status === 'number' && status >= 400 && status < 500 ? status : null;
+}
+
 export function errorHandler(
   error: unknown,
   _request: Request,
@@ -30,6 +41,12 @@ export function errorHandler(
 
   if (error instanceof HttpError) {
     response.status(error.status).json({ error: error.message, details: error.details });
+    return;
+  }
+
+  const status = clientErrorStatus(error);
+  if (status !== null) {
+    response.status(status).json({ error: error instanceof Error ? error.message : 'bad request' });
     return;
   }
 

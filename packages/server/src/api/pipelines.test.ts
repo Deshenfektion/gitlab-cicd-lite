@@ -144,3 +144,34 @@ describe('GET /api/pipelines/:id', () => {
     expect(response.body.error).toContain('missing');
   });
 });
+
+describe('request errors', () => {
+  it('reports malformed json as a client error', async () => {
+    const response = await request(harness.app)
+      .post('/api/pipelines')
+      .set('Content-Type', 'application/json')
+      .send('{not json');
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toEqual(expect.any(String));
+  });
+
+  it('rejects a body that exceeds the size limit', async () => {
+    const response = await request(harness.app)
+      .post('/api/pipelines')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ config: 'x'.repeat(400_000) }));
+
+    expect(response.status).toBe(413);
+  });
+
+  it('still reports unexpected failures as server errors', async () => {
+    harness.context.pipelines.list = () => {
+      throw new Error('database exploded');
+    };
+
+    const response = await request(harness.app).get('/api/pipelines');
+    expect(response.status).toBe(500);
+    expect(response.body.error).toBe('database exploded');
+  });
+});
