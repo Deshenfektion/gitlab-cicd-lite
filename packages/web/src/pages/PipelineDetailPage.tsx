@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ApiError, api } from '../api/client.js';
 import type { Artifact, LogLine } from '../api/types.js';
 import { JobPanel } from '../components/JobPanel.js';
+import { PipelineActions } from '../components/PipelineActions.js';
 import { PipelineGraph } from '../components/PipelineGraph.js';
 import { Spinner } from '../components/Spinner.js';
 import { StatusBadge } from '../components/StatusBadge.js';
@@ -114,40 +115,13 @@ export function PipelineDetailPage() {
           </p>
         </div>
 
-        <div className="flex gap-2">
-          {pipeline.status === 'pending' ? (
-            <button
-              type="button"
-              onClick={() => void runAction('start', () => api.startPipeline(pipeline.id))}
-              disabled={pending !== null}
-              className="rounded-md bg-status-running/20 px-3 py-1.5 text-sm font-medium text-status-running ring-1 ring-status-running/30 ring-inset hover:bg-status-running/30 disabled:opacity-40"
-            >
-              Run pipeline
-            </button>
-          ) : null}
-
-          {pipeline.status === 'running' ? (
-            <button
-              type="button"
-              onClick={() => void runAction('cancel', () => api.cancelPipeline(pipeline.id))}
-              disabled={pending !== null}
-              className="rounded-md bg-surface-raised px-3 py-1.5 text-sm ring-1 ring-border-subtle ring-inset hover:bg-surface-raised/70 disabled:opacity-40"
-            >
-              Cancel
-            </button>
-          ) : null}
-
-          {pipeline.status === 'failed' || pipeline.status === 'canceled' ? (
-            <button
-              type="button"
-              onClick={() => void runAction('retry', () => api.retryPipeline(pipeline.id))}
-              disabled={pending !== null}
-              className="rounded-md bg-surface-raised px-3 py-1.5 text-sm ring-1 ring-border-subtle ring-inset hover:bg-surface-raised/70 disabled:opacity-40"
-            >
-              Retry failed jobs
-            </button>
-          ) : null}
-        </div>
+        <PipelineActions
+          pipeline={pipeline}
+          busy={pending !== null}
+          onStart={() => void runAction('start', () => api.startPipeline(pipeline.id))}
+          onCancel={() => void runAction('cancel', () => api.cancelPipeline(pipeline.id))}
+          onRetry={() => void runAction('retry', () => api.retryPipeline(pipeline.id))}
+        />
       </div>
 
       {actionError === null ? null : (
