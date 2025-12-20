@@ -95,3 +95,47 @@ describe('parseConfig', () => {
     }
   });
 });
+
+describe('validation messages', () => {
+  const messageFor = (yaml: string): string => {
+    try {
+      parseConfig(yaml);
+      return '';
+    } catch (error) {
+      return (error as ConfigError).issues.map((issue) => issue.message).join(' | ');
+    }
+  };
+
+  it('explains what a script may be', () => {
+    expect(messageFor('jobs:\n  a:\n    script: true\n')).toContain(
+      'must be a command or a non-empty list of commands',
+    );
+  });
+
+  it('explains what needs may be', () => {
+    expect(messageFor('jobs:\n  a:\n    script: e\n    needs: 42\n')).toContain(
+      'must be a job name or a list of job names',
+    );
+  });
+
+  it('explains what retry may be and lists the valid triggers', () => {
+    for (const yaml of [
+      'jobs:\n  a:\n    script: e\n    retry: sometimes\n',
+      'jobs:\n  a:\n    script: e\n    retry:\n      max: 1\n      when: whenever\n',
+    ]) {
+      const message = messageFor(yaml);
+      expect(message).toContain('must be a retry count');
+      expect(message).toContain('script_failure');
+      expect(message).toContain('timeout');
+    }
+  });
+
+  it('still points at the offending path', () => {
+    try {
+      parseConfig('jobs:\n  build:\n    script: true\n');
+      expect.unreachable('should have thrown');
+    } catch (error) {
+      expect((error as ConfigError).issues[0]?.path).toBe('jobs.build.script');
+    }
+  });
+});
