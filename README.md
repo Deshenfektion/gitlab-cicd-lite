@@ -13,7 +13,7 @@ and to build those parts properly rather than to reproduce a feature list.
 ┌──────────┐   POST /api/pipelines    ┌────────────────────────────────────────┐
 │  Web UI  │ ───────────────────────► │              @cicd/server              │
 │  (React) │ ◄─────────────────────── │  express · sqlite · orchestrator · sse │
-└──────────┘   SSE + polling          └───────────────┬────────────────────────┘
+└──────────┘   server-sent events     └───────────────┬────────────────────────┘
                                                       │
                                    ┌──────────────────┴──────────────────┐
                                    ▼                                     ▼
@@ -64,8 +64,9 @@ implemented here rather than delegated to a library.
 - **Artifacts** — declared paths are archived as `tar.gz`, restored into the
   workspaces of dependent jobs, downloadable over HTTP, and swept when they
   expire.
-- **Live output** — logs are persisted per attempt and streamed over
-  server-sent events.
+- **Live output** — logs are persisted per attempt and pushed to the browser
+  over server-sent events; the UI keeps a slow poll only as a safety net in case
+  the stream drops.
 - **Web UI** — pipeline list, dependency graph, per-job detail, log viewer,
   artifacts and retry buttons.
 - **CLI** — run, validate or inspect a pipeline without a server.
@@ -257,8 +258,9 @@ This is a learning project, and it stops well short of a production CI system:
   whole archive is buffered by the client on download.
 - **No caching, no `include`, no templates, no matrix builds, no manual gates,
   no scheduled pipelines.**
-- **The UI polls.** The SSE endpoints exist and work, but the React pages use
-  polling because it was simpler to keep correct across retries.
+- **The event stream does not resume.** If the connection drops, the UI falls
+  back to its periodic refresh rather than replaying missed events from a
+  cursor.
 
 ## Future improvements
 
@@ -266,7 +268,6 @@ This is a learning project, and it stops well short of a production CI system:
   server instances can share the work.
 - Register runners over HTTP and let them pull jobs, rather than executing them
   in the API process.
-- Replace UI polling with the existing event stream.
 - Add a cache key mechanism, separate from artifacts, for dependency reuse.
 - Pluggable artifact storage with an S3 backend.
 - Structured job output (test reports, coverage) as first-class artifacts.

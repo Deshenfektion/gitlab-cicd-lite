@@ -171,6 +171,19 @@ exactly the definition the run started with, even if the source file changed.
 Everything cascades from `pipelines`, so deleting a pipeline cleans up its jobs,
 edges, logs and artifact rows in one statement.
 
+## Delivering updates to the browser
+
+The server publishes every job and pipeline transition, plus every log line, to
+an in-process `EventBus` keyed by pipeline id. `GET /api/pipelines/:id/events`
+subscribes an SSE connection to that topic and sends a snapshot first, so a
+client that connects mid-run does not have to reconcile a partial picture.
+
+The UI opens one stream per pipeline it is viewing. Log lines are appended
+directly (deduplicated by sequence number) and any status event triggers a
+refetch of the pipeline, which keeps the rendered state authoritative rather
+than reconstructed from events. A slow poll remains as a safety net because the
+stream has no resume cursor: a dropped connection loses the events it missed.
+
 ## Orchestration
 
 `Orchestrator` is the only place where the engine, the database and the runner

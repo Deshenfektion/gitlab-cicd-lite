@@ -8,10 +8,11 @@ import { PipelineGraph } from '../components/PipelineGraph.js';
 import { Spinner } from '../components/Spinner.js';
 import { StatusBadge } from '../components/StatusBadge.js';
 import { formatDuration, formatTimestamp } from '../format.js';
+import { useEventStream, type PipelineEvent } from '../hooks/useEventStream.js';
 import { usePolledResource } from '../hooks/usePolledResource.js';
 
-const ACTIVE_POLL_MS = 1500;
-const IDLE_POLL_MS = 15000;
+const ACTIVE_POLL_MS = 8000;
+const IDLE_POLL_MS = 30000;
 
 export function PipelineDetailPage() {
   const { id = '' } = useParams();
@@ -70,12 +71,42 @@ export function PipelineDetailPage() {
       };
     }
 
-    const timer = setInterval(() => void load().catch(() => undefined), ACTIVE_POLL_MS);
     return () => {
       cancelled = true;
-      clearInterval(timer);
     };
   }, [selectedJob?.id, selectedJob?.status, selectedJob?.attempt]);
+
+  const selectedJobId_ = selectedJob?.id ?? null;
+
+  const onEvent = useCallback(
+    (event: PipelineEvent) => {
+      if (event.type === 'job.log') {
+        if (event.jobId !== selectedJobId_) {
+          return;
+        }
+        setLines((current) =>
+          current.some((line) => line.seq === event.seq)
+            ? current
+            : [
+                ...current,
+                {
+                  seq: event.seq,
+                  attempt: event.attempt,
+                  stream: event.stream,
+                  message: event.message,
+                  createdAt: Date.now(),
+                },
+              ],
+        );
+        return;
+      }
+
+      detail.refresh();
+    },
+    [selectedJobId_, detail.refresh],
+  );
+
+  useEventStream(id, onEvent);
 
   const runAction = async (label: string, action: () => Promise<unknown>): Promise<void> => {
     setPending(label);
