@@ -30,7 +30,7 @@ interface PipelineGraphProps {
   onSelect(jobId: string): void;
 }
 
-function layout(
+export function layout(
   jobs: readonly Job[],
   layers: readonly (readonly string[])[],
 ): { placements: Map<string, Placement>; width: number; height: number } {

@@ -226,7 +226,10 @@ detection, topological layering, every legal and illegal state transition,
 scheduling and concurrency, retry policy and backoff, `allow_failure`,
 cancellation, timeouts, the Docker executor lifecycle (against an in-memory
 Docker client), real `tar.gz` artifact round trips and handover between jobs,
-repository persistence, startup recovery, and the REST API end to end.
+repository persistence, startup recovery, and the REST API end to end. On the
+front end only the pure pieces are covered — duration and size formatting and
+the SVG graph layout — because rendering tests would have needed a DOM
+environment for very little extra confidence.
 
 Two seams make this practical: `JobExecutor`, which lets the engine be tested
 with a scripted executor, and `DockerClient`, which lets the Docker executor be
