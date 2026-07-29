@@ -25,52 +25,6 @@ and to build those parts properly rather than to reproduce a feature list.
                           └────────────────┘                   └──────────────────┘
 ```
 
-## Motivation
-
-Most CI systems look simple from the outside: you write some YAML and jobs run.
-The interesting problems are hidden behind that:
-
-- What exactly does `needs` mean when stages also imply an order?
-- How do you know a job may start, and how do you notice a pipeline is finished?
-- What happens to the twelve jobs downstream of the one that just failed?
-- How do you cancel a job that is currently inside `docker wait`?
-- How does a file produced in one container appear in the next one?
-
-Each of those is a small, well-defined systems problem, and each one is
-implemented here rather than delegated to a library.
-
-## Features
-
-- **Configuration** — a small YAML dialect with `stages`, `jobs`, `needs`,
-  `image`, `script`, `artifacts`, `retry`, `timeout` and `allow_failure`,
-  validated with a schema that rejects unknown keys and reports every problem at
-  once with a path.
-- **Dependency graph** — explicit `needs` edges and implicit stage edges are
-  resolved into one DAG, checked for cycles, unknown references and `needs` that
-  point forwards.
-- **Scheduler** — a pure, synchronous state machine that answers "which jobs may
-  start now?" and records outcomes. Independent jobs run concurrently up to a
-  configurable limit.
-- **Retries** — per-job retry budgets restricted by failure kind
-  (`script_failure`, `runner_failure`, `timeout`) with exponential backoff.
-- **Failure propagation** — the downstream closure of a failed job is marked
-  `skipped`; `allow_failure` jobs are tolerated once their retries are spent.
-- **Cancellation and recovery** — cancelling aborts running containers and
-  cancels queued jobs. After a crash the server marks interrupted runs as
-  cancelled and removes the job containers they left behind, found by label.
-- **Docker runner** — pulls images, creates containers, demultiplexes the Docker
-  stream into stdout/stderr, collects exit codes and always cleans up. A shell
-  executor exists for development and tests.
-- **Artifacts** — declared paths are archived as `tar.gz`, restored into the
-  workspaces of dependent jobs, downloadable over HTTP, and swept when they
-  expire.
-- **Live output** — logs are persisted per attempt and pushed to the browser
-  over server-sent events; the UI keeps a slow poll only as a safety net in case
-  the stream drops.
-- **Web UI** — pipeline list, dependency graph, per-job detail, log viewer,
-  artifacts and retry buttons.
-- **CLI** — run, validate or inspect a pipeline without a server.
-
 ## Architecture
 
 The repository is an npm workspace with five packages:
@@ -91,42 +45,6 @@ a container runtime and the runner testable without a Docker daemon.
 See [docs/architecture.md](docs/architecture.md) for the details,
 [docs/configuration.md](docs/configuration.md) for the configuration reference
 and [docs/api.md](docs/api.md) for the HTTP API.
-
-## Design decisions
-
-**The graph is the execution model, stages are sugar.** Stages are expanded into
-edges during normalization and then forgotten. A job with no `needs` depends on
-every job in the _closest preceding populated_ stage, which is the transitive
-reduction of "all earlier stages" — same semantics, far fewer edges.
-
-**Scheduling is separated from execution.** `PipelineScheduler` is synchronous
-and side-effect free: it holds job statuses and answers `ready()`, `start()` and
-`complete()`. `PipelineRun` owns the async part — concurrency, timeouts, abort
-signals, retry backoff. Almost all engine behaviour is therefore testable
-without touching a clock or a process.
-
-**Retries live in the engine, not the runner.** The executor reports _what_
-happened (`script_failure`, `runner_failure`, `timeout`); the scheduler decides
-whether that is worth another attempt. A runner that had to know about retry
-policy would be much harder to replace.
-
-**Timeouts are enforced by the run loop, not trusted to the executor.** The loop
-races the executor against a timer and aborts the shared `AbortSignal`. An
-executor that ignores the signal still cannot make a job outlive its timeout; it
-only fails to clean up promptly.
-
-**The state machine rejects illegal transitions loudly.** Every status change
-goes through `assertTransition`. Bugs like "job finished twice" surface as
-errors instead of quietly corrupting a pipeline's status.
-
-**Artifacts move through the workspace, not through the engine.** The run loop
-passes each job the list of dependencies that publish artifacts; the executor
-restores them into the workspace before the script runs and archives the
-declared paths afterwards. The engine never touches a file.
-
-**SQLite with WAL.** A single-node CI system does not need Postgres. Foreign
-keys are on, migrations are ordered and transactional, and cascading deletes
-keep jobs, logs and artifacts consistent with their pipeline.
 
 ## Running locally
 
@@ -190,30 +108,6 @@ node packages/cli/dist/main.js run examples/fan-out.ci.yml --executor shell --ve
 ✓ pipeline success in 0s
 ```
 
-## Repository layout
-
-```
-packages/
-  core/     config → graph → scheduler → run loop   (no I/O)
-    config/   parsing, schema, normalization, durations
-    graph/    dag, cycles, stages, topology, layers, traversal
-    state/    transitions, pipeline status derivation
-    engine/   scheduler, retry policy, run loop, executor port
-  runner/   executors and everything that touches the machine
-    docker/   client interface, dockerode adapter, stream demultiplexer
-    executors/  docker and shell
-    artifacts/  store, tar archiving, restore/collect coordinator
-  server/   http and persistence
-    db/         connection, migrations
-    repositories/  pipelines, jobs, logs, artifacts, runners
-    services/   orchestrator, retry planning, events, cleanup, recovery
-    api/        routers, serializers, sse
-  web/      react interface
-  cli/      command line entry point
-docs/       architecture, configuration and api reference
-examples/   sample pipeline configurations
-```
-
 ## Testing
 
 ```bash
@@ -237,40 +131,6 @@ with a scripted executor, and `DockerClient`, which lets the Docker executor be
 tested without a daemon. The artifact tests deliberately use the real filesystem
 and the real `tar` implementation, because that is exactly the part where a fake
 would prove nothing.
-
-## Limitations
-
-This is a learning project, and it stops well short of a production CI system:
-
-- **Single node.** The orchestrator holds running pipelines in memory. Two
-  server processes against the same database would both try to schedule work.
-- **No authentication or authorization.** Every endpoint is open.
-- **No isolation between pipelines.** Job containers get the default bridge
-  network and a bind-mounted workspace; a malicious pipeline is not contained.
-  Mounting the Docker socket also means the server is effectively root on the
-  host.
-- **The shell executor can orphan processes.** Containers left by a crash are
-  reaped by label on startup, but a killed server cannot reclaim the shell
-  executor's detached process groups.
-- **No log rotation.** Logs are rows in SQLite; a very chatty job will grow the
-  database.
-- **Artifacts are local files.** No object storage, no deduplication, and the
-  whole archive is buffered by the client on download.
-- **No caching, no `include`, no templates, no matrix builds, no manual gates,
-  no scheduled pipelines.**
-- **The event stream does not resume.** If the connection drops, the UI falls
-  back to its periodic refresh rather than replaying missed events from a
-  cursor.
-
-## Future improvements
-
-- Move scheduling state into the database with optimistic locking so several
-  server instances can share the work.
-- Register runners over HTTP and let them pull jobs, rather than executing them
-  in the API process.
-- Add a cache key mechanism, separate from artifacts, for dependency reuse.
-- Pluggable artifact storage with an S3 backend.
-- Structured job output (test reports, coverage) as first-class artifacts.
 
 ## License
 
